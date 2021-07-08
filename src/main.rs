@@ -1,6 +1,6 @@
 use anyhow::Result;
 use xapian_rusty::FeatureFlag::{
-    FlagBoolean, FlagBooleanAnyCase, FlagLovehate, FlagPhrase, FlagSpellingCorrection,
+    FlagBoolean, FlagBooleanAnyCase, FlagDefault, FlagLovehate, FlagPhrase, FlagSpellingCorrection,
 };
 use xapian_rusty::{
     Database, Document, Query, QueryParser, Stem, TermGenerator, WritableDatabase, BRASS,
@@ -11,7 +11,7 @@ use xapian_rusty::{
 // export CARGO_TARGET_DIR=target/foo
 // cargo run
 
-fn main() -> Result<()> {
+fn index() -> Result<()> {
     let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OVERWRITE)?;
     //let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OPEN)?;
     let mut tg = TermGenerator::new()?;
@@ -32,23 +32,57 @@ fn main() -> Result<()> {
     doc.add_boolean_term("my-id-term2")?;
     db.replace_document("my-id-term2", &mut doc)?;
 
-    println!("Hello, world!");
+    db.commit()?;
 
+    Ok(())
+}
+
+fn query() -> Result<()> {
     let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
     let mut qp = QueryParser::new()?;
+    let mut stem = Stem::new("en")?;
     qp.set_stemmer(&mut stem)?;
     let flags = FlagBoolean as i16
         | FlagPhrase as i16
         | FlagLovehate as i16
         | FlagBooleanAnyCase as i16
         | FlagSpellingCorrection as i16;
-    let mut query = qp.parse_query("foo and thing", flags)?;
+    let flags = FlagDefault as i16;
+    //let mut query = qp.parse_query("foo", flags).expect("not found");
+    let mut query = qp.parse_query("bar", flags).expect("not found");
+    //let mut query = qp.parse_query("NOT foo", flags).expect("not found");
+    //let mut query = qp.parse_query("foo AND thing", flags).expect("not found");
     let mut enq = db.new_enquire()?;
     enq.set_query(&mut query)?;
-    let mut mset = enq.get_mset(0,10)?;
-    //for mut v in mset.iterator().into_iter() {
-    //    println!("Match {}", v.get_document_data()?)
+    let mut mset = enq.get_mset(0, 10)?;
+    let appxMatches = mset.get_matches_estimated()?;
+    println!("Approximate Matches {}", appxMatches);
+
+    // How to get results?
+    let it = mset.iterator();
+    match it {
+        Ok(mut s) => {
+            // The call here causes compilation failure
+            //println!("Match {:?}", s.get_document_data());
+            println!("Match");
+        }
+        Err(e) => {
+            eprintln!("No Matched");
+        }
+    };
+    // This also doesn't work in the same way
+    //for mut v in mset.iterator() {
+    //    let data = v.get_document_data()?;
+    //    println!("Match {}", data);
     //}
+
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    index()?;
+    println!("Hello, world!");
+    query()?;
 
     Ok(())
 }
