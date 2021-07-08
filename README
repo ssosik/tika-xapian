@@ -1,0 +1,17 @@
+Get it:
+
+> git clone --recurse-submodules git@github.com:ssosik/tika-xapian.git
+
+
+See makefile file details:
+
+> make
+> make clean
+
+
+Requirements:
+
+lightly patched version of xapian-rusty, included here as a submodule.
+
+zlib and xapian-core, which are bundled here.
+> wget https://zlib.net/zlib-1.2.11.tar.gz
