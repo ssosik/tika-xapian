@@ -7,9 +7,6 @@ use xapian_rusty::{
     DB_CREATE_OR_OPEN, DB_CREATE_OR_OVERWRITE,
 };
 
-// export CARGO_MANIFEST_DIR=/Users/ssosik/workspace/xapian-rusty
-// export CARGO_TARGET_DIR=target/foo
-// cargo run
 
 fn index() -> Result<()> {
     let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OVERWRITE)?;
@@ -81,7 +78,6 @@ fn query() -> Result<()> {
 
 fn main() -> Result<()> {
     index()?;
-    println!("Hello, world!");
     query()?;
 
     Ok(())
