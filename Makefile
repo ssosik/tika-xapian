@@ -1,16 +1,18 @@
 ZLIB = zlib-1.2.11
 XPCORE = xapian-core-1.4.17
 
-build: zlib xapian-core
+build: $(ZLIB) $(XPCORE)
 	cargo build
 
-zlib:
+$(ZLIB):
 	tar -xvzf $(ZLIB).tar.gz
 	cd $(ZLIB) && ./configure && $(MAKE)
 
-xapian-core:
+$(XPCORE):
 	tar -xvf $(XPCORE).tar.xz
-	cd $(XPCORE) && ./configure CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) && $(MAKE)
+	cd $(XPCORE) \
+		&& ./configure CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
+		&& $(MAKE)
 
 clean:
 	rm -rf $(ZLIB) $(XPCORE)
