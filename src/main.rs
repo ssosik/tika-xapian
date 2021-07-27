@@ -60,9 +60,10 @@ fn query() -> Result<()> {
     // How to get results?
     let it = mset.iterator();
     match it {
-        Ok(s) => {
+        Ok(mut s) => {
             // The call here causes compilation failure
-            //println!("Match {:?}", s.get_document_data());
+            let m = s.get_document_data();
+            println!("Match {:?}", m);
             println!("Match");
         }
         Err(e) => {
