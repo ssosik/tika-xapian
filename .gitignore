@@ -1,2 +1,6 @@
 /target
 *.swp
+Cargo.lock
+xapian-core-1.2.25.tar.xz
+xapian-core-1.2.25/
+zlib-1.2.11/
