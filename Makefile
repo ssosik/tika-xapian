@@ -17,13 +17,18 @@ $(XPCOREZ):
 
 $(ZLIB): $(ZLIBZ)
 	tar -xvzf $(ZLIBZ)
-	cd $(ZLIB) && ./configure && $(MAKE)
+	cd $(ZLIB) \
+		&& ./configure --static \
+		&& $(MAKE)
 
 $(XPCORE): $(XPCOREZ)
 	tar -xvf $(XPCOREZ)
 	cd $(XPCORE) \
-		&& ./configure CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
+		&& ./configure CXX='clang++' CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
 		&& $(MAKE)
+		#&& ./configure CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
+		#&& ./configure CXX='clang' CXXFLAGS='-arch=x86_64' CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
+		#&& ./configure CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
 
 clean:
 	rm -rf $(ZLIB) $(XPCORE)
