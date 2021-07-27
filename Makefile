@@ -5,7 +5,7 @@ XPCOREVER = 1.4.17
 XPCORE = xapian-core-$(XPCOREVER)
 XPCOREZ = $(XPCORE).tar.xz
 
-build: $(ZLIB) $(XPCORE)
+build: $(ZLIB) $(XPCORE)/.libs
 	cargo build
 
 # Fetch dependencies
@@ -21,14 +21,16 @@ $(ZLIB): $(ZLIBZ)
 		&& ./configure --static \
 		&& $(MAKE)
 
-$(XPCORE): $(XPCOREZ)
+$(XPCORE)/.libs: $(XPCOREZ) $(ZLIB)
 	tar -xvf $(XPCOREZ)
 	cd $(XPCORE) \
-		&& ./configure CXX='clang++' CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
+		&& ./configure CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
 		&& $(MAKE)
 		#&& ./configure CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
 		#&& ./configure CXX='clang' CXXFLAGS='-arch=x86_64' CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
-		#&& ./configure CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
+		#&& ./configure CXX='clang++' CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
+
+$(XPCORE): $(XPCORE)/.libs
 
 clean:
 	rm -rf $(ZLIB) $(XPCORE)
