@@ -28,5 +28,7 @@ $(XPCORE): $(XPCOREZ)
 		&& $(MAKE)
 
 clean:
-	rm -rf $(ZLIB) $(XPCORE)
+	# Keep zlib around through cleans
+	#rm -rf $(ZLIB) $(XPCORE)
+	rm -rf $(XPCORE)
 	cargo clean
