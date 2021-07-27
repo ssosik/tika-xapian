@@ -5,7 +5,7 @@ XPCOREVER = 1.4.17
 XPCORE = xapian-core-$(XPCOREVER)
 XPCOREZ = $(XPCORE).tar.xz
 
-build: $(ZLIB) $(XPCORE)/.libs
+build: $(ZLIB) $(XPCORE)
 	cargo build
 
 # Fetch dependencies
@@ -33,5 +33,5 @@ $(XPCORE)/.libs: $(XPCOREZ) $(ZLIB)
 $(XPCORE): $(XPCORE)/.libs
 
 clean:
-	rm -rf $(ZLIB) $(XPCORE)
+	rm -rf $(XPCORE)
 	cargo clean
