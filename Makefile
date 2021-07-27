@@ -1,15 +1,26 @@
-ZLIB = zlib-1.2.11
-XPCORE = xapian-core-1.4.17
+ZLIBVER = 1.2.11
+ZLIB = zlib-$(ZLIBVER)
+ZLIBZ = $(ZLIB).tar.gz
+XPCOREVER = 1.4.17
+XPCORE = xapian-core-$(XPCOREVER)
+XPCOREZ = $(XPCORE).tar.xz
 
 build: $(ZLIB) $(XPCORE)
 	cargo build
 
-$(ZLIB):
-	tar -xvzf $(ZLIB).tar.gz
+# Fetch dependencies
+$(ZLIBZ):
+	wget https://zlib.net/$(ZLIBZ)
+
+$(XPCOREZ):
+	wget https://oligarchy.co.uk/xapian/$(XPCOREVER)/$(XPCOREZ)
+
+$(ZLIB): $(ZLIBZ)
+	tar -xvzf $(ZLIBZ)
 	cd $(ZLIB) && ./configure && $(MAKE)
 
-$(XPCORE):
-	tar -xvf $(XPCORE).tar.xz
+$(XPCORE): $(XPCOREZ)
+	tar -xvf $(XPCOREZ)
 	cd $(XPCORE) \
 		&& ./configure CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
 		&& $(MAKE)
