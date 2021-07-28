@@ -5,17 +5,18 @@ use std::io::{Error, ErrorKind};
 
 /// Representation for a given Markdown + FrontMatter file
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct TikaDocument {
+pub struct TikaDocument {
     /// Inherent metadata about the document
     #[serde(default)]
     filename: String,
     #[serde(skip_deserializing)]
-    full_path: OsString,
+    pub full_path: OsString,
 
     /// FrontMatter-derived metadata about the document
     #[serde(default)]
     author: String,
     date: String,
+
     /// RFC 3339 based timestamp
     #[serde(deserialize_with = "string_or_list_string")]
     tags: Vec<String>,
