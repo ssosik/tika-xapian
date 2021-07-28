@@ -1,4 +1,7 @@
-#[allow(unused_imports)]
+mod util;
+mod tika_core;
+mod tui_app;
+
 use color_eyre::Report;
 use xapian_rusty::FeatureFlag::{
     FlagBoolean, FlagBooleanAnyCase, FlagDefault, FlagLovehate, FlagPhrase, FlagSpellingCorrection,
@@ -12,19 +15,11 @@ use xapian_rusty::{
 use chrono::{DateTime, FixedOffset};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use glob::{glob, Paths};
-//use std::convert::From;
-//use std::io::{Error, ErrorKind};
-//use std::str;
-//use std::{ffi::OsString, fmt, fs, io, io::Read, marker::PhantomData, path::Path};
 use toml::Value as tomlVal;
 use yaml_rust::YamlEmitter;
 
-mod util;
-mod tika_core;
-mod tui_app;
-
 use crate::util::event::{Event, Events};
-use unicode_width::UnicodeWidthStr;
+//use unicode_width::UnicodeWidthStr;
 
 /// Example FrontMatter + Markdown doc to index:
 ///
