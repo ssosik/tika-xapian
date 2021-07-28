@@ -5,7 +5,7 @@ XPCOREVER = 1.4.17
 XPCORE = xapian-core-$(XPCOREVER)
 XPCOREZ = $(XPCORE).tar.xz
 
-build: $(ZLIB) $(XPCORE)
+build: $(ZLIB) $(XPCORE)/.libs
 	cargo build
 
 # Fetch dependencies
@@ -17,14 +17,22 @@ $(XPCOREZ):
 
 $(ZLIB): $(ZLIBZ)
 	tar -xvzf $(ZLIBZ)
-	cd $(ZLIB) && ./configure && $(MAKE)
+	cd $(ZLIB) \
+		&& ./configure --static \
+		&& $(MAKE)
 
 $(XPCORE): $(XPCOREZ)
 	tar -xvf $(XPCOREZ)
+
+$(XPCORE)/.libs: $(ZLIB) $(XPCORE)
+	# Apply patches to xapian-core from xapian-rusty:
+	cp -R xapian-rusty/include $(XPCORE)/.
+	cp omenquire.cc $(XPCORE)/api/
+	# Build it
 	cd $(XPCORE) \
 		&& ./configure CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
 		&& $(MAKE)
 
 clean:
-	rm -rf $(ZLIB) $(XPCORE)
+	rm -rf $(XPCORE)
 	cargo clean
