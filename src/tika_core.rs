@@ -1,11 +1,11 @@
 use serde::{de, Deserialize, Deserializer, Serialize};
 use std::{ffi::OsString, fmt, fs, io, io::Read, marker::PhantomData, path::Path};
-use std::convert::From;
-use std::io::{Error, ErrorKind};
+//use std::convert::From;
+//use std::io::{Error, ErrorKind};
 
 /// Representation for a given Markdown + FrontMatter file
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct TikaDocument {
+pub(crate) struct TikaDocument {
     /// Inherent metadata about the document
     #[serde(default)]
     filename: String,
