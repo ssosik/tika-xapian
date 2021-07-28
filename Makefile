@@ -25,6 +25,7 @@ $(XPCORE): $(XPCOREZ)
 	tar -xvf $(XPCOREZ)
 
 $(XPCORE)/.libs: $(ZLIB) $(XPCORE)
+	cp -R xapian-rusty/include/* $(XPCORE)/include/.
 	cd $(XPCORE) \
 		&& ./configure CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
 		&& $(MAKE)
