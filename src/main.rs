@@ -2,7 +2,7 @@ mod tika_document;
 mod tui_app;
 mod util;
 
-use crate::tika_document::parse_file;
+use crate::tika_document::{parse_file, TikaDocument};
 use crate::util::event::{Event, Events};
 use crate::util::glob_files;
 use clap::{App, Arg, ArgMatches, SubCommand};
@@ -75,7 +75,7 @@ fn main() -> Result<(), Report> {
 
     // If requested, index the data
     if cli.occurrences_of("index") > 0 {
-        let db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OPEN)?;
+        let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OPEN)?;
         let mut tg = TermGenerator::new()?;
         let mut stemmer = Stem::new("en")?;
         tg.set_stemmer(&mut stemmer)?;
@@ -92,18 +92,18 @@ fn main() -> Result<(), Report> {
             match entry {
                 Ok(path) => {
                     if let Ok(doc) = parse_file(&path) {
-                        let t = doc.parse_date().unwrap();
-
                         if let Some(f) = path.to_str() {
-                            index_writer.add_document(doc!(
-                                author => doc.author,
-                                body => doc.body,
-                                date => Value::Date(t.with_timezone(&chrono::Utc)),
-                                filename => doc.filename,
-                                full_path => f,
-                                tags => doc.tags.join(" "),
-                                title => doc.title,
-                            ));
+                            let t = doc.parse_date().unwrap();
+                            index(&mut db, &mut tg, &doc)?;
+                            //index_writer.add_document(doc!(
+                            //    author => doc.author,
+                            //    body => doc.body,
+                            //    date => Value::Date(t.with_timezone(&chrono::Utc)),
+                            //    filename => doc.filename,
+                            //    full_path => f,
+                            //    tags => doc.tags.join(" "),
+                            //    title => doc.title,
+                            //));
                             if cli.occurrences_of("v") > 0 {
                                 println!("✅ {}", f);
                             }
@@ -121,30 +121,28 @@ fn main() -> Result<(), Report> {
                 Err(e) => eprintln!("❌ {:?}", e),
             }
         }
+
+        db.commit()?;
     }
 
-    index()?;
     query()?;
 
     Ok(())
 }
 
-fn index(db: &mut WritableDatabase, tg: &mut TermGenerator) -> Result<(), Report> {
-    let mut doc = Document::new()?;
-    tg.set_document(&mut doc)?;
-    tg.index_text("foo bar thing")?;
-    doc.set_data("data foo bar thing")?;
-    doc.add_boolean_term("my-id-term")?;
-    db.replace_document("my-id-term", &mut doc)?;
+fn index(
+    db: &mut WritableDatabase,
+    tg: &mut TermGenerator,
+    doc: &TikaDocument,
+) -> Result<(), Report> {
+    let mut xdoc = Document::new()?;
+    tg.set_document(&mut xdoc)?;
 
-    let mut doc = Document::new()?;
-    tg.set_document(&mut doc)?;
-    tg.index_text("two bar thing")?;
-    doc.set_data("data two bar thing")?;
-    doc.add_boolean_term("my-id-term2")?;
-    db.replace_document("my-id-term2", &mut doc)?;
-
-    db.commit()?;
+    tg.index_text_with_prefix(&doc.author, "A");
+    //tg.index_text("foo bar thing")?;
+    //doc.set_data("data foo bar thing")?;
+    //doc.add_boolean_term("my-id-term")?;
+    //db.replace_document("my-id-term", &mut xdoc)?;
 
     Ok(())
 }
