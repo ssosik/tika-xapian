@@ -10,8 +10,7 @@ use xapian_rusty::{
 
 
 fn index() -> Result<()> {
-    let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OVERWRITE)?;
-    //let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OPEN)?;
+    let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OPEN)?;
     let mut tg = TermGenerator::new()?;
     let mut stem = Stem::new("en")?;
     tg.set_stemmer(&mut stem)?;
@@ -58,22 +57,22 @@ fn query() -> Result<()> {
     println!("Approximate Matches {}", appxMatches);
 
     // How to get results?
-    let it = mset.iterator();
-    match it {
-        Ok(mut s) => {
-            // The call here causes compilation failure
-            println!("Match {:?}", s.get_document_data());
-            println!("Match");
-        }
-        Err(e) => {
-            eprintln!("No Matched");
-        }
-    };
+    //let it = mset.iterator();
+    //match it {
+    //    Ok(mut s) => {
+    //        // The call here causes compilation failure
+    //        println!("Match {:?}", s.get_document_data());
+    //        println!("Match");
+    //    }
+    //    Err(e) => {
+    //        eprintln!("No Matched");
+    //    }
+    //};
     // This also doesn't work in the same way
-    //for mut v in mset.iterator() {
-    //    let data = v.get_document_data()?;
-    //    println!("Match {}", data);
-    //}
+    for mut v in mset.iterator() {
+        let data = v.get_document_data()?;
+        println!("Match {}", data);
+    }
 
     Ok(())
 }
