@@ -41,6 +41,13 @@ pub(crate) struct TikaDocument {
 }
 
 impl TikaDocument {
+    pub(crate) fn date_str(&self) -> Result<String, Report> {
+        if let Ok(t) = self.parse_date() {
+            let ret = t.with_timezone(&chrono::Utc).to_rfc3339();
+            return Ok(ret);
+        }
+        Err(eyre!("❌ Failed to convert path to date '{}'", &self.date))
+    }
     pub(crate) fn parse_date(&self) -> Result<DateTime<FixedOffset>, Report> {
         if let Ok(rfc3339) = DateTime::parse_from_rfc3339(&self.date) {
             return Ok(rfc3339);
