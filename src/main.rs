@@ -1,15 +1,53 @@
-use anyhow::Result;
+#[allow(unused_imports)]
+use color_eyre::Report;
 use xapian_rusty::FeatureFlag::{
     FlagBoolean, FlagBooleanAnyCase, FlagDefault, FlagLovehate, FlagPhrase, FlagSpellingCorrection,
 };
-#[allow(unused_imports)]
+
 use xapian_rusty::{
     Database, Document, Query, QueryParser, Stem, TermGenerator, WritableDatabase, BRASS,
     DB_CREATE_OR_OPEN, DB_CREATE_OR_OVERWRITE,
 };
 
+use chrono::{DateTime, FixedOffset};
+use clap::{App, Arg, ArgMatches, SubCommand};
+use glob::{glob, Paths};
+use serde::{de, Deserialize, Deserializer, Serialize};
+use std::convert::From;
+use std::io::{Error, ErrorKind};
+use std::str;
+use std::{ffi::OsString, fmt, fs, io, io::Read, marker::PhantomData, path::Path};
+use toml::Value as tomlVal;
+use yaml_rust::YamlEmitter;
 
-fn index() -> Result<()> {
+mod util;
+
+use crate::util::event::{Event, Events};
+use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use tui::{
+    backend::TermionBackend,
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::{Span, Spans},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
+    Terminal,
+};
+use unicode_width::UnicodeWidthStr;
+
+/// Example FrontMatter + Markdown doc to index:
+///
+/// ---
+/// author: Steve Sosik
+/// date: 2021-06-22T12:48:16-0400
+/// tags:
+/// - tika
+/// title: This is an example note
+/// ---
+///
+/// Some note here formatted with Markdown syntax
+///
+
+fn index() -> Result<(), Report> {
     let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OPEN)?;
     let mut tg = TermGenerator::new()?;
     let mut stem = Stem::new("en")?;
@@ -35,7 +73,7 @@ fn index() -> Result<()> {
 }
 
 #[allow(unused_variables, non_snake_case)]
-fn query() -> Result<()> {
+fn query() -> Result<(), Report> {
     let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
@@ -56,19 +94,6 @@ fn query() -> Result<()> {
     let appxMatches = mset.get_matches_estimated()?;
     println!("Approximate Matches {}", appxMatches);
 
-    // How to get results?
-    //let it = mset.iterator();
-    //match it {
-    //    Ok(mut s) => {
-    //        // The call here causes compilation failure
-    //        println!("Match {:?}", s.get_document_data());
-    //        println!("Match");
-    //    }
-    //    Err(e) => {
-    //        eprintln!("No Matched");
-    //    }
-    //};
-    // This also doesn't work in the same way
     for mut v in mset.iterator() {
         let data = v.get_document_data()?;
         println!("Match {}", data);
@@ -77,7 +102,18 @@ fn query() -> Result<()> {
     Ok(())
 }
 
-fn main() -> Result<()> {
+fn setup() -> Result<(), Report> {
+    if std::env::var("RUST_LIB_BACKTRACE").is_err() {
+        std::env::set_var("RUST_LIB_BACKTRACE", "1")
+    }
+    color_eyre::install()?;
+
+    Ok(())
+}
+
+fn main() -> Result<(), Report> {
+    setup()?;
+
     index()?;
     query()?;
 
