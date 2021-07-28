@@ -1,6 +1,6 @@
-mod util;
 mod tika_core;
 mod tui_app;
+mod util;
 
 use color_eyre::Report;
 use xapian_rusty::FeatureFlag::{

@@ -1,4 +1,3 @@
-
 use crate::tika_core::TikaDocument;
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
