@@ -36,7 +36,7 @@ use crate::util::glob_files;
 /// Some note here formatted with Markdown syntax
 ///
 
-fn setup<'a>(default_config_file: &str) -> Result<ArgMatches, Report> {
+fn setup<'a>(default_config_file: &str) -> Result<(ArgMatches, WritableDatabase), Report> {
     if std::env::var("RUST_LIB_BACKTRACE").is_err() {
         std::env::set_var("RUST_LIB_BACKTRACE", "1")
     }
@@ -67,6 +67,11 @@ fn setup<'a>(default_config_file: &str) -> Result<ArgMatches, Report> {
                 .help("Sets the level of verbosity"),
         )
         .arg(
+            Arg::with_name("index")
+                .short("i")
+                .help("Index data rather than querying the DB"),
+        )
+        .arg(
             Arg::with_name("source")
                 .short("s")
                 .value_name("DIRECTORY")
@@ -80,12 +85,14 @@ fn setup<'a>(default_config_file: &str) -> Result<ArgMatches, Report> {
         )
         .get_matches();
 
-    Ok(cli)
+    let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OPEN)?;
+
+    Ok((cli, db))
 }
 
 fn main() -> Result<(), Report> {
     let default_config_file = shellexpand::tilde("~/.config/tika/tika.toml");
-    let cli = setup(&default_config_file)?;
+    let (cli, db) = setup(&default_config_file)?;
 
     for entry in glob_files(
         &cli.value_of("config").unwrap(),
@@ -96,6 +103,7 @@ fn main() -> Result<(), Report> {
     {
         println!("Entry: {:?}", entry);
     }
+
     index()?;
     query()?;
 

@@ -7,7 +7,6 @@ pub(crate) fn glob_files(
     source: Option<&str>,
     verbosity: i8,
 ) -> Result<Paths, Box<dyn std::error::Error>> {
-    //let cfg_file = cli.value_of("config").unwrap();
     let cfg_fh = fs::OpenOptions::new()
         .read(true)
         .write(false)
