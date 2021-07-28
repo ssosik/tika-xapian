@@ -25,7 +25,10 @@ $(XPCORE): $(XPCOREZ)
 	tar -xvf $(XPCOREZ)
 
 $(XPCORE)/.libs: $(ZLIB) $(XPCORE)
-	cp -R xapian-rusty/include/* $(XPCORE)/include/.
+	# Apply patches to xapian-core from xapian-rusty:
+	cp -R xapian-rusty/include $(XPCORE)/.
+	cp omenquire.cc $(XPCORE)/api/
+	# Build it
 	cd $(XPCORE) \
 		&& ./configure CPPFLAGS=-I../$(ZLIB) LDFLAGS=-L../$(ZLIB) \
 		&& $(MAKE)
