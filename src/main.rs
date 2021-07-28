@@ -1,42 +1,23 @@
-mod tika_core;
+mod tika_document;
 mod tui_app;
 mod util;
 
+use crate::tika_document::parse_file;
+use crate::util::event::{Event, Events};
+use crate::util::glob_files;
+use clap::{App, Arg, ArgMatches, SubCommand};
 use color_eyre::Report;
 use xapian_rusty::FeatureFlag::{
     FlagBoolean, FlagBooleanAnyCase, FlagDefault, FlagLovehate, FlagPhrase, FlagSpellingCorrection,
 };
-
 use xapian_rusty::{
     Database, Document, Query, QueryParser, Stem, TermGenerator, WritableDatabase, BRASS,
     DB_CREATE_OR_OPEN, DB_CREATE_OR_OVERWRITE,
 };
 
-use chrono::{DateTime, FixedOffset};
-use clap::{App, Arg, ArgMatches, SubCommand};
-use glob::{glob, Paths};
-use toml::Value as tomlVal;
-use yaml_rust::YamlEmitter;
-
-use crate::util::event::{Event, Events};
-use crate::util::glob_files;
-
 //use unicode_width::UnicodeWidthStr;
 
-/// Example FrontMatter + Markdown doc to index:
-///
-/// ---
-/// author: Steve Sosik
-/// date: 2021-06-22T12:48:16-0400
-/// tags:
-/// - tika
-/// title: This is an example note
-/// ---
-///
-/// Some note here formatted with Markdown syntax
-///
-
-fn setup<'a>(default_config_file: &str) -> Result<(ArgMatches, WritableDatabase), Report> {
+fn setup<'a>(default_config_file: &str) -> Result<ArgMatches, Report> {
     if std::env::var("RUST_LIB_BACKTRACE").is_err() {
         std::env::set_var("RUST_LIB_BACKTRACE", "1")
     }
@@ -61,7 +42,7 @@ fn setup<'a>(default_config_file: &str) -> Result<(ArgMatches, WritableDatabase)
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("v")
+            Arg::with_name("verbosity")
                 .short("v")
                 .multiple(true)
                 .help("Sets the level of verbosity"),
@@ -85,23 +66,61 @@ fn setup<'a>(default_config_file: &str) -> Result<(ArgMatches, WritableDatabase)
         )
         .get_matches();
 
-    let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OPEN)?;
-
-    Ok((cli, db))
+    Ok(cli)
 }
 
 fn main() -> Result<(), Report> {
     let default_config_file = shellexpand::tilde("~/.config/tika/tika.toml");
-    let (cli, db) = setup(&default_config_file)?;
+    let cli = setup(&default_config_file)?;
 
-    for entry in glob_files(
-        &cli.value_of("config").unwrap(),
-        cli.value_of("source"),
-        cli.occurrences_of("v") as i8,
-    )
-    .expect("Failed to read glob pattern")
-    {
-        println!("Entry: {:?}", entry);
+    // If requested, index the data
+    if cli.occurrences_of("index") > 0 {
+        let db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OPEN)?;
+        let mut tg = TermGenerator::new()?;
+        let mut stemmer = Stem::new("en")?;
+        tg.set_stemmer(&mut stemmer)?;
+
+        for entry in glob_files(
+            &cli.value_of("config").unwrap(),
+            cli.value_of("source"),
+            cli.occurrences_of("verbosity") as i8,
+        )
+        .expect("Failed to read glob pattern")
+        {
+            println!("Entry: {:?}", entry);
+
+            match entry {
+                Ok(path) => {
+                    if let Ok(doc) = parse_file(&path) {
+                        let t = doc.parse_date().unwrap();
+
+                        if let Some(f) = path.to_str() {
+                            index_writer.add_document(doc!(
+                                author => doc.author,
+                                body => doc.body,
+                                date => Value::Date(t.with_timezone(&chrono::Utc)),
+                                filename => doc.filename,
+                                full_path => f,
+                                tags => doc.tags.join(" "),
+                                title => doc.title,
+                            ));
+                            if cli.occurrences_of("v") > 0 {
+                                println!("✅ {}", f);
+                            }
+                        } else {
+                            eprintln!(
+                                "❌ Failed to parse time '{}' from {}",
+                                doc.date, doc.filename
+                            );
+                        }
+                    } else {
+                        eprintln!("❌ Failed to load file {}", path.display());
+                    }
+                }
+
+                Err(e) => eprintln!("❌ {:?}", e),
+            }
+        }
     }
 
     index()?;
@@ -110,12 +129,7 @@ fn main() -> Result<(), Report> {
     Ok(())
 }
 
-fn index() -> Result<(), Report> {
-    let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OPEN)?;
-    let mut tg = TermGenerator::new()?;
-    let mut stem = Stem::new("en")?;
-    tg.set_stemmer(&mut stem)?;
-
+fn index(db: &mut WritableDatabase, tg: &mut TermGenerator) -> Result<(), Report> {
     let mut doc = Document::new()?;
     tg.set_document(&mut doc)?;
     tg.index_text("foo bar thing")?;

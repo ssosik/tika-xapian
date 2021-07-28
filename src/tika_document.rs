@@ -1,30 +1,58 @@
+use chrono::{DateTime, FixedOffset};
+use color_eyre::Report;
+use eyre::{eyre, Result};
 use serde::{de, Deserialize, Deserializer, Serialize};
-use std::{ffi::OsString, fmt, fs, io, io::Read, marker::PhantomData, path::Path};
-//use std::convert::From;
-//use std::io::{Error, ErrorKind};
+use std::io::{Error, ErrorKind};
+use std::{ffi::OsString, fmt, fs, io, marker::PhantomData};
+use yaml_rust::YamlEmitter;
 
-/// Representation for a given Markdown + FrontMatter file
+/// Representation for a given Markdown + FrontMatter file; Example:
+/// ---
+/// author: Steve Sosik
+/// date: 2021-06-22T12:48:16-0400
+/// tags:
+/// - tika
+/// title: This is an example note
+/// ---
+///
+/// Some note here formatted with Markdown syntax
+///
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct TikaDocument {
     /// Inherent metadata about the document
     #[serde(default)]
-    filename: String,
+    pub filename: String,
     #[serde(skip_deserializing)]
     pub full_path: OsString,
 
     /// FrontMatter-derived metadata about the document
     #[serde(default)]
-    author: String,
-    date: String,
+    pub author: String,
+    pub date: String,
 
     /// RFC 3339 based timestamp
     #[serde(deserialize_with = "string_or_list_string")]
-    tags: Vec<String>,
-    title: String,
+    pub tags: Vec<String>,
+    pub title: String,
 
     /// The Markdown-formatted body of the document
     #[serde(skip_deserializing)]
-    body: String,
+    pub body: String,
+}
+
+impl TikaDocument {
+    pub(crate) fn parse_date(&self) -> Result<DateTime<FixedOffset>, Report> {
+        if let Ok(rfc3339) = DateTime::parse_from_rfc3339(&self.date) {
+            return Ok(rfc3339);
+        } else if let Ok(s) = DateTime::parse_from_str(&self.date, &String::from("%Y-%m-%dT%T%z")) {
+            return Ok(s);
+        }
+        eprintln!("❌ Failed to convert path to str '{}'", &self.filename);
+        Err(eyre!(
+            "❌ Failed to convert path to str '{}'",
+            &self.filename
+        ))
+    }
 }
 
 /// Support Deserializing a string into a list of string of length 1
@@ -58,6 +86,34 @@ where
     }
 
     deserializer.deserialize_any(StringOrVec(PhantomData))
+}
+
+pub(crate) fn parse_file(path: &std::path::PathBuf) -> Result<TikaDocument, io::Error> {
+    let s = fs::read_to_string(path.to_str().unwrap())?;
+
+    let (yaml, content) = frontmatter::parse_and_find_content(&s).unwrap();
+    match yaml {
+        Some(yaml) => {
+            let mut out_str = String::new();
+            {
+                let mut emitter = YamlEmitter::new(&mut out_str);
+                emitter.dump(&yaml).unwrap(); // dump the YAML object to a String
+            }
+
+            let mut doc: TikaDocument = serde_yaml::from_str(&out_str).unwrap();
+            if doc.filename == *"" {
+                doc.filename = String::from(path.file_name().unwrap().to_str().unwrap());
+            }
+
+            doc.body = content.to_string();
+
+            Ok(doc)
+        }
+        None => Err(Error::new(
+            ErrorKind::Other,
+            format!("Failed to process file {}", path.display()),
+        )),
+    }
 }
 
 //impl From<TantivyDoc> for TikaDocument {
