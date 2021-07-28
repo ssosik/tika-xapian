@@ -1,8 +1,8 @@
 use glob::{glob, Paths};
-use std::{fmt, fs, io, io::Read, path::Path};
+use std::{fs, io, io::Read, path::Path};
 use toml::Value as tomlVal;
 
-fn glob_files(
+pub(crate) fn glob_files(
     cfg_file: &str,
     source: Option<&str>,
     verbosity: i8,
