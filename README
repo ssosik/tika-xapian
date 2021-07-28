@@ -1,17 +1,34 @@
-Get it:
+# Get it
 
+```bash
 > git clone --recurse-submodules git@github.com:ssosik/tika-xapian.git
+```
 
+# Build it
 
 See makefile file details:
 
+```bash
 > make
 > make clean
+```
 
 
-Requirements:
+# Requirements
 
 lightly patched version of xapian-rusty, included here as a submodule.
 
 zlib and xapian-core, which are bundled here.
-> wget https://zlib.net/zlib-1.2.11.tar.gz
+
+
+# Running
+
+```bash
+DYLD_LIBRARY_PATH=xapian-core-1.4.17/.libs/ ./target/debug/xapian-rusty-test
+```
+
+
+# TODO
+- unit tests
+- statically link xapian-core
+- cleanups, refactoring, clippy and linting
