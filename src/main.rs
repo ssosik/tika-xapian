@@ -34,17 +34,56 @@ use crate::util::event::{Event, Events};
 /// Some note here formatted with Markdown syntax
 ///
 
-fn setup() -> Result<(), Report> {
+fn setup<'a>(default_config_file: &str) -> Result<ArgMatches, Report> {
     if std::env::var("RUST_LIB_BACKTRACE").is_err() {
         std::env::set_var("RUST_LIB_BACKTRACE", "1")
     }
     color_eyre::install()?;
 
-    Ok(())
+    let cli = App::new("tika")
+        .version("1.0")
+        .author("Steve <steve@little-fluffy.cloud>")
+        .about("Things I Know About: Zettlekasten-like Markdown+FrontMatter Indexer and query tool")
+        .arg(
+            Arg::with_name("config")
+                .short("c")
+                .value_name("FILE")
+                .help(
+                    format!(
+                        "Point to a config TOML file, defaults to `{}`",
+                        default_config_file
+                    )
+                    .as_str(),
+                )
+                .default_value(&default_config_file)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("v")
+                .short("v")
+                .multiple(true)
+                .help("Sets the level of verbosity"),
+        )
+        .arg(
+            Arg::with_name("source")
+                .short("s")
+                .value_name("DIRECTORY")
+                .help("Glob path to markdown files to load")
+                .takes_value(true),
+        )
+        .subcommand(
+            SubCommand::with_name("query")
+                .about("Query the index")
+                .arg(Arg::with_name("query").required(true).help("Query string")),
+        )
+        .get_matches();
+
+    Ok(cli)
 }
 
 fn main() -> Result<(), Report> {
-    setup()?;
+    let default_config_file = shellexpand::tilde("~/.config/tika/tika.toml");
+    setup(&default_config_file)?;
 
     index()?;
     query()?;

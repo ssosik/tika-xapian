@@ -11,7 +11,7 @@ use tui::{
 };
 
 /// TerminalApp holds the state of the application
-struct TerminalApp {
+pub(crate) struct TerminalApp {
     /// Current value of the input box
     input: String,
     /// Query Matches
