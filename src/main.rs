@@ -62,7 +62,7 @@ fn query() -> Result<()> {
     match it {
         Ok(mut s) => {
             // The call here causes compilation failure
-            //println!("Match {:?}", s.get_document_data());
+            println!("Match {:?}", s.get_document_data());
             println!("Match");
         }
         Err(e) => {
