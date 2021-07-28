@@ -42,7 +42,7 @@ fn setup<'a>(default_config_file: &str) -> Result<ArgMatches, Report> {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("verbosity")
+            Arg::with_name("v")
                 .short("v")
                 .multiple(true)
                 .help("Sets the level of verbosity"),
@@ -87,23 +87,11 @@ fn main() -> Result<(), Report> {
         )
         .expect("Failed to read glob pattern")
         {
-            println!("Entry: {:?}", entry);
-
             match entry {
                 Ok(path) => {
                     if let Ok(doc) = parse_file(&path) {
                         if let Some(f) = path.to_str() {
-                            let t = doc.parse_date().unwrap();
                             index(&mut db, &mut tg, &doc)?;
-                            //index_writer.add_document(doc!(
-                            //    author => doc.author,
-                            //    body => doc.body,
-                            //    date => Value::Date(t.with_timezone(&chrono::Utc)),
-                            //    filename => doc.filename,
-                            //    full_path => f,
-                            //    tags => doc.tags.join(" "),
-                            //    title => doc.title,
-                            //));
                             if cli.occurrences_of("v") > 0 {
                                 println!("✅ {}", f);
                             }
@@ -138,11 +126,17 @@ fn index(
     let mut xdoc = Document::new()?;
     tg.set_document(&mut xdoc)?;
 
-    tg.index_text_with_prefix(&doc.author, "A");
-    //tg.index_text("foo bar thing")?;
-    //doc.set_data("data foo bar thing")?;
-    //doc.add_boolean_term("my-id-term")?;
-    //db.replace_document("my-id-term", &mut xdoc)?;
+    tg.index_text_with_prefix(&doc.author, "A")?;
+    tg.index_text_with_prefix(&doc.date_str()?, "D")?;
+    tg.index_text_with_prefix(&doc.filename, "F")?;
+    tg.index_text_with_prefix(&doc.title, "S")?;
+    //tg.index_text_with_prefix(&doc.subtitle, "XS")?;
+
+    xdoc.set_data(&doc.body)?;
+
+    let id = "Q".to_owned() + &doc.filename;
+    xdoc.add_boolean_term(&id)?;
+    db.replace_document(&id, &mut xdoc)?;
 
     Ok(())
 }
@@ -160,7 +154,7 @@ fn query() -> Result<(), Report> {
         | FlagSpellingCorrection as i16;
     let flags = FlagDefault as i16;
     //let mut query = qp.parse_query("foo", flags).expect("not found");
-    let mut query = qp.parse_query("bar", flags).expect("not found");
+    let mut query = qp.parse_query("openssl", flags).expect("not found");
     //let mut query = qp.parse_query("NOT foo", flags).expect("not found");
     //let mut query = qp.parse_query("foo AND thing", flags).expect("not found");
     let mut enq = db.new_enquire()?;
