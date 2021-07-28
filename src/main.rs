@@ -2,6 +2,7 @@ use anyhow::Result;
 use xapian_rusty::FeatureFlag::{
     FlagBoolean, FlagBooleanAnyCase, FlagDefault, FlagLovehate, FlagPhrase, FlagSpellingCorrection,
 };
+#[allow(unused_imports)]
 use xapian_rusty::{
     Database, Document, Query, QueryParser, Stem, TermGenerator, WritableDatabase, BRASS,
     DB_CREATE_OR_OPEN, DB_CREATE_OR_OVERWRITE,
@@ -34,6 +35,7 @@ fn index() -> Result<()> {
     Ok(())
 }
 
+#[allow(unused_variables, non_snake_case)]
 fn query() -> Result<()> {
     let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
     let mut qp = QueryParser::new()?;
