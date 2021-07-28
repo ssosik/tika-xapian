@@ -19,6 +19,8 @@ use toml::Value as tomlVal;
 use yaml_rust::YamlEmitter;
 
 use crate::util::event::{Event, Events};
+use crate::util::glob_files;
+
 //use unicode_width::UnicodeWidthStr;
 
 /// Example FrontMatter + Markdown doc to index:
@@ -83,8 +85,17 @@ fn setup<'a>(default_config_file: &str) -> Result<ArgMatches, Report> {
 
 fn main() -> Result<(), Report> {
     let default_config_file = shellexpand::tilde("~/.config/tika/tika.toml");
-    setup(&default_config_file)?;
+    let cli = setup(&default_config_file)?;
 
+    for entry in glob_files(
+        &cli.value_of("config").unwrap(),
+        cli.value_of("source"),
+        cli.occurrences_of("v") as i8,
+    )
+    .expect("Failed to read glob pattern")
+    {
+        println!("Entry: {:?}", entry);
+    }
     index()?;
     query()?;
 
