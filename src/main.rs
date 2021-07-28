@@ -12,7 +12,6 @@ use xapian_rusty::{
 use chrono::{DateTime, FixedOffset};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use glob::{glob, Paths};
-use serde::{de, Deserialize, Deserializer, Serialize};
 use std::convert::From;
 use std::io::{Error, ErrorKind};
 use std::str;
@@ -21,6 +20,7 @@ use toml::Value as tomlVal;
 use yaml_rust::YamlEmitter;
 
 mod util;
+mod tika_core;
 
 use crate::util::event::{Event, Events};
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
@@ -46,6 +46,24 @@ use unicode_width::UnicodeWidthStr;
 ///
 /// Some note here formatted with Markdown syntax
 ///
+
+fn setup() -> Result<(), Report> {
+    if std::env::var("RUST_LIB_BACKTRACE").is_err() {
+        std::env::set_var("RUST_LIB_BACKTRACE", "1")
+    }
+    color_eyre::install()?;
+
+    Ok(())
+}
+
+fn main() -> Result<(), Report> {
+    setup()?;
+
+    index()?;
+    query()?;
+
+    Ok(())
+}
 
 fn index() -> Result<(), Report> {
     let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OPEN)?;
@@ -98,24 +116,6 @@ fn query() -> Result<(), Report> {
         let data = v.get_document_data()?;
         println!("Match {}", data);
     }
-
-    Ok(())
-}
-
-fn setup() -> Result<(), Report> {
-    if std::env::var("RUST_LIB_BACKTRACE").is_err() {
-        std::env::set_var("RUST_LIB_BACKTRACE", "1")
-    }
-    color_eyre::install()?;
-
-    Ok(())
-}
-
-fn main() -> Result<(), Report> {
-    setup()?;
-
-    index()?;
-    query()?;
 
     Ok(())
 }
