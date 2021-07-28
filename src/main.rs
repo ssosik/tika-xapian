@@ -12,26 +12,18 @@ use xapian_rusty::{
 use chrono::{DateTime, FixedOffset};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use glob::{glob, Paths};
-use std::convert::From;
-use std::io::{Error, ErrorKind};
-use std::str;
-use std::{ffi::OsString, fmt, fs, io, io::Read, marker::PhantomData, path::Path};
+//use std::convert::From;
+//use std::io::{Error, ErrorKind};
+//use std::str;
+//use std::{ffi::OsString, fmt, fs, io, io::Read, marker::PhantomData, path::Path};
 use toml::Value as tomlVal;
 use yaml_rust::YamlEmitter;
 
 mod util;
 mod tika_core;
+mod tui_app;
 
 use crate::util::event::{Event, Events};
-use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
-use tui::{
-    backend::TermionBackend,
-    layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    text::{Span, Spans},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
-    Terminal,
-};
 use unicode_width::UnicodeWidthStr;
 
 /// Example FrontMatter + Markdown doc to index:
