@@ -123,6 +123,7 @@ fn index(
     tg: &mut TermGenerator,
     doc: &TikaDocument,
 ) -> Result<(), Report> {
+    // Create a new Xapian Document to store attributes on the passed-in TikaDocument
     let mut xdoc = Document::new()?;
     tg.set_document(&mut xdoc)?;
 
@@ -152,11 +153,9 @@ fn query() -> Result<(), Report> {
         | FlagLovehate as i16
         | FlagBooleanAnyCase as i16
         | FlagSpellingCorrection as i16;
-    let flags = FlagDefault as i16;
-    //let mut query = qp.parse_query("foo", flags).expect("not found");
-    let mut query = qp.parse_query("openssl", flags).expect("not found");
-    //let mut query = qp.parse_query("NOT foo", flags).expect("not found");
-    //let mut query = qp.parse_query("foo AND thing", flags).expect("not found");
+    //let flags = FlagDefault as i16;
+    //let mut query = qp.parse_query("openssl", flags).expect("not found");
+    let mut query = qp.parse_query("author:steve", flags).expect("not found");
     let mut enq = db.new_enquire()?;
     enq.set_query(&mut query)?;
     let mut mset = enq.get_mset(0, 10)?;
@@ -164,8 +163,6 @@ fn query() -> Result<(), Report> {
     println!("Approximate Matches {}", appxMatches);
 
     for mut v in mset.iterator() {
-        //let data = v.get_document_data()?;
-        //println!("Match {}", data);
         let res = v.get_document_data();
         if let Ok(data) = res {
             println!("Match {}", data);
