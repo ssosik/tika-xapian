@@ -1,4 +1,6 @@
 use crate::tika_document::TikaDocument;
+use color_eyre::Report;
+use std::{fs, io, io::Read, path::Path};
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
     backend::TermionBackend,
@@ -9,14 +11,25 @@ use tui::{
     Terminal,
 };
 
+// TODO move terminal stuff into here
+//pub(crate) fn NewTerminal() -> Result<Terminal, Report> {
+//    // Terminal initialization
+//    let stdout = io::stdout().into_raw_mode()?;
+//    let stdout = MouseTerminal::from(stdout);
+//    let stdout = AlternateScreen::from(stdout);
+//    let backend = TermionBackend::new(stdout);
+//    let mut terminal = Terminal::new(backend)?;
+//    Ok(terminal)
+//}
+
 /// TerminalApp holds the state of the application
 pub(crate) struct TerminalApp {
     /// Current value of the input box
-    input: String,
+    pub(crate) input: String,
     /// Query Matches
-    matches: Vec<TikaDocument>,
+    pub(crate) matches: Vec<TikaDocument>,
     /// Keep track of which matches are selected
-    state: ListState,
+    pub(crate) state: ListState,
 }
 
 impl TerminalApp {

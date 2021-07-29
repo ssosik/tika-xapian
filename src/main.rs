@@ -16,7 +16,9 @@ use xapian_rusty::{
     DB_CREATE_OR_OPEN, DB_CREATE_OR_OVERWRITE,
 };
 
-//use unicode_width::UnicodeWidthStr;
+// Needed to provide `width()` method on String:
+// no method named `width` found for struct `std::string::String` in the current scope
+use unicode_width::UnicodeWidthStr;
 
 fn setup<'a>(default_config_file: &str) -> Result<ArgMatches, Report> {
     if std::env::var("RUST_LIB_BACKTRACE").is_err() {
@@ -135,7 +137,8 @@ fn main() -> Result<(), Report> {
         db.commit()?;
     }
 
-    query()?;
+    //query()?;
+    interactive_query()?;
 
     Ok(())
 }
@@ -216,6 +219,140 @@ fn query() -> Result<(), Report> {
             eprintln!("No Matches");
         }
         v.next()?;
+    }
+
+    Ok(())
+}
+
+// TODO Move as much of this as possible out into tui_app.rs
+use std::io;
+use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use tui::{
+    backend::TermionBackend,
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::{Span, Spans},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
+    Terminal,
+};
+/// Interactive query interface
+fn interactive_query() -> Result<(), Report> {
+    let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
+    let mut qp = QueryParser::new()?;
+    let mut stem = Stem::new("en")?;
+    qp.set_stemmer(&mut stem)?;
+
+    let flags = FlagBoolean as i16
+        | FlagPhrase as i16
+        | FlagLovehate as i16
+        | FlagBooleanAnyCase as i16
+        | FlagWildcard as i16
+        | FlagPureNot as i16
+        | FlagPartial as i16
+        | FlagSpellingCorrection as i16;
+
+    let mut selected: Vec<String> = Vec::new();
+
+    //let mut terminal = tui_app::NewTerminal()?;
+    // Terminal initialization
+    let stdout = io::stdout().into_raw_mode()?;
+    let stdout = MouseTerminal::from(stdout);
+    let stdout = AlternateScreen::from(stdout);
+    let backend = TermionBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    // Setup event handlers
+    let events = Events::new();
+
+    // Create default app state
+    let mut app = tui_app::TerminalApp::default();
+
+    loop {
+        // Draw UI
+        terminal.draw(|f| {
+            let panes = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(1)
+                .constraints([Constraint::Min(1), Constraint::Length(3)].as_ref())
+                .split(f.size());
+            let selected_style = Style::default().add_modifier(Modifier::REVERSED);
+
+            // Output area where match titles are displayed
+            let matches: Vec<ListItem> = app
+                .matches
+                .iter()
+                .map(|m| {
+                    let content = vec![Spans::from(Span::raw(format!("{}", m.title)))];
+                    ListItem::new(content)
+                })
+                .collect();
+            let matches = List::new(matches)
+                .block(Block::default().borders(Borders::ALL))
+                .highlight_style(selected_style);
+            //.highlight_symbol("> ");
+            f.render_stateful_widget(matches, panes[0], &mut app.state);
+
+            // Input area where queries are entered
+            let input = Paragraph::new(app.input.as_ref())
+                .style(Style::default().fg(Color::Yellow))
+                .block(Block::default().borders(Borders::ALL));
+            f.render_widget(input, panes[1]);
+            // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
+            f.set_cursor(
+                // Put cursor past the end of the input text
+                panes[1].x + app.input.width() as u16 + 1,
+                // Move one line down, from the border to the input line
+                panes[1].y + 1,
+            )
+        })?;
+
+        // Handle input
+        if let Event::Input(input) = events.next()? {
+            match input {
+                Key::Char('\n') => {
+                    selected = app.get_selected();
+                    println!("DONE");
+                    break;
+                }
+                Key::Ctrl('c') => {
+                    break;
+                }
+                Key::Char(c) => {
+                    app.input.push(c);
+                }
+                Key::Backspace => {
+                    app.input.pop();
+                }
+                Key::Down => {
+                    app.next();
+                }
+                Key::Up => {
+                    app.previous();
+                }
+                _ => {}
+            }
+
+            let mut query = qp.parse_query(&app.input, flags).expect("not found");
+            let mut enq = db.new_enquire()?;
+            enq.set_query(&mut query)?;
+            let mut mset = enq.get_mset(0, 100)?;
+
+            let mut v = mset.iterator().unwrap();
+            while v.is_next().unwrap() {
+                let res = v.get_document_data();
+                if let Ok(data) = res {
+                    let v: TikaDocument = serde_json::from_str(&data)?;
+                    app.matches.push(v);
+                } else {
+                    eprintln!("No Matches");
+                }
+                v.next()?;
+            }
+        }
+    }
+
+    for sel in selected {
+        println!("{}", sel);
     }
 
     Ok(())
