@@ -8,7 +8,8 @@ use crate::util::glob_files;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use color_eyre::Report;
 use xapian_rusty::FeatureFlag::{
-    FlagBoolean, FlagBooleanAnyCase, FlagDefault, FlagLovehate, FlagPhrase, FlagSpellingCorrection,
+    FlagBoolean, FlagBooleanAnyCase, FlagLovehate, FlagPartial, FlagPhrase, FlagPureNot,
+    FlagSpellingCorrection, FlagWildcard,
 };
 use xapian_rusty::{
     Database, Document, Query, QueryParser, Stem, TermGenerator, WritableDatabase, XapianOp, BRASS,
@@ -171,7 +172,6 @@ fn perform_index(
 }
 
 fn query() -> Result<(), Report> {
-
     let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
@@ -181,24 +181,24 @@ fn query() -> Result<(), Report> {
         | FlagPhrase as i16
         | FlagLovehate as i16
         | FlagBooleanAnyCase as i16
+        | FlagWildcard as i16
+        | FlagPureNot as i16
+        | FlagPartial as i16
         | FlagSpellingCorrection as i16;
-    //let flags = FlagDefault as i16;
 
+    // Combine queries
+    //let mut query = qp
+    //    .parse_query("a*", flags)
+    //    .expect("not found");
+    //let mut q = qp
+    //    .parse_query_with_prefix("work", flags, "K")
+    //    .expect("not found");
+    //query = query.add_right(XapianOp::OpAnd, &mut q).expect("not found");
+
+    // Negate a tag
     let mut query = qp
-        .parse_query("vkms AND openssl", flags)
+        .parse_query_with_prefix("NOT work", flags, "K")
         .expect("not found");
-    //let mut query = qp.parse_query("", flags).expect("not found");
-    //let mut query = qp
-    //    .parse_query_with_prefix("vim", flags, "S")
-    //    .expect("not found");
-    //let mut query = qp
-    //    .parse_query_with_prefix("*", flags, "K")
-    //    .expect("not found");
-    let mut q = qp
-        .parse_query_with_prefix("work", flags, "K")
-        .expect("not found");
-    query = query.add_right(XapianOp::OpAnd, &mut q).expect("not found");
-    //let mut query = qp.parse_query("*", flags).expect("not found");
 
     let mut enq = db.new_enquire()?;
     enq.set_query(&mut query)?;
@@ -211,7 +211,7 @@ fn query() -> Result<(), Report> {
         let res = v.get_document_data();
         if let Ok(data) = res {
             let v: TikaDocument = serde_json::from_str(&data)?;
-            println!("Match {}", v.title);
+            println!("Match {}", v.filename);
         } else {
             eprintln!("No Matches");
         }
