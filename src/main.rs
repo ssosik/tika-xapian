@@ -160,9 +160,8 @@ fn perform_index(
 
     tg.index_text(&tikadoc.body)?;
 
-    // TODO This should be a JSON blob so we can retrieve various pieces when displaying query
-    // results: e.g. filename or Title
-    doc.set_data(&tikadoc.body)?;
+    // Convert the TikaDocument into JSON and set it in the DB for retrieval later
+    doc.set_data(&serde_json::to_string(&tikadoc).unwrap())?;
 
     let id = "Q".to_owned() + &tikadoc.filename;
     doc.add_boolean_term(&id)?;
@@ -207,7 +206,9 @@ fn query() -> Result<(), Report> {
     for mut v in mset.iterator() {
         let res = v.get_document_data();
         if let Ok(data) = res {
-            println!("Match {}", data);
+            let v: TikaDocument = serde_json::from_str(&data)?;
+
+            println!("Match {}", v.title);
         } else {
             eprintln!("No Matches");
         }
