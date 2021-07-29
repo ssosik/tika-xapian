@@ -170,18 +170,20 @@ fn perform_index(
     Ok(())
 }
 
-#[allow(unused_variables, non_snake_case)]
 fn query() -> Result<(), Report> {
+
     let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
     qp.set_stemmer(&mut stem)?;
+
     let flags = FlagBoolean as i16
         | FlagPhrase as i16
         | FlagLovehate as i16
         | FlagBooleanAnyCase as i16
         | FlagSpellingCorrection as i16;
     //let flags = FlagDefault as i16;
+
     let mut query = qp
         .parse_query("vkms AND openssl", flags)
         .expect("not found");
@@ -197,21 +199,23 @@ fn query() -> Result<(), Report> {
         .expect("not found");
     query = query.add_right(XapianOp::OpAnd, &mut q).expect("not found");
     //let mut query = qp.parse_query("*", flags).expect("not found");
+
     let mut enq = db.new_enquire()?;
     enq.set_query(&mut query)?;
-    let mut mset = enq.get_mset(0, 10)?;
-    let appxMatches = mset.get_matches_estimated()?;
-    println!("Approximate Matches {}", appxMatches);
+    let mut mset = enq.get_mset(0, 100)?;
+    let appx_matches = mset.get_matches_estimated()?;
+    println!("Approximate Matches {}", appx_matches);
 
-    for mut v in mset.iterator() {
+    let mut v = mset.iterator().unwrap();
+    while v.is_next().unwrap() {
         let res = v.get_document_data();
         if let Ok(data) = res {
             let v: TikaDocument = serde_json::from_str(&data)?;
-
             println!("Match {}", v.title);
         } else {
             eprintln!("No Matches");
         }
+        v.next()?;
     }
 
     Ok(())
