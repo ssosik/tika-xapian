@@ -11,7 +11,7 @@ use xapian_rusty::FeatureFlag::{
     FlagBoolean, FlagBooleanAnyCase, FlagDefault, FlagLovehate, FlagPhrase, FlagSpellingCorrection,
 };
 use xapian_rusty::{
-    Database, Document, Query, QueryParser, Stem, TermGenerator, WritableDatabase, BRASS,
+    Database, Document, Query, QueryParser, Stem, TermGenerator, WritableDatabase, XapianOp, BRASS,
     DB_CREATE_OR_OPEN, DB_CREATE_OR_OVERWRITE,
 };
 
@@ -183,10 +183,20 @@ fn query() -> Result<(), Report> {
         | FlagBooleanAnyCase as i16
         | FlagSpellingCorrection as i16;
     //let flags = FlagDefault as i16;
-    //let mut query = qp.parse_query("vkms AND openssl", flags).expect("not found");
     let mut query = qp
-        .parse_query_with_prefix("vim", flags, "S")
+        .parse_query("vkms AND openssl", flags)
         .expect("not found");
+    //let mut query = qp.parse_query("", flags).expect("not found");
+    //let mut query = qp
+    //    .parse_query_with_prefix("vim", flags, "S")
+    //    .expect("not found");
+    //let mut query = qp
+    //    .parse_query_with_prefix("*", flags, "K")
+    //    .expect("not found");
+    let mut q = qp
+        .parse_query_with_prefix("work", flags, "K")
+        .expect("not found");
+    query = query.add_right(XapianOp::OpAnd, &mut q).expect("not found");
     //let mut query = qp.parse_query("*", flags).expect("not found");
     let mut enq = db.new_enquire()?;
     enq.set_query(&mut query)?;
