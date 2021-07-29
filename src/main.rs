@@ -90,7 +90,7 @@ fn main() -> Result<(), Report> {
         //.map(|entry| match entry {
         //    Ok(path) => {
         //            if let Ok(tikadoc) = parse_file(&path) {
-        //                index(&mut db, &mut tg, &tikadoc)?;
+        //                perform_index(&mut db, &mut tg, &tikadoc)?;
         //                if cli.occurrences_of("v") > 0 {
         //                    if let Ok(p) = tikadoc.full_path.into_string() {
         //                        println!("✅ {}", p);
@@ -115,7 +115,7 @@ fn main() -> Result<(), Report> {
                 // TODO convert this to iterator style using map/filter
                 Ok(path) => {
                     if let Ok(tikadoc) = parse_file(&path) {
-                        index(&mut db, &mut tg, &tikadoc)?;
+                        perform_index(&mut db, &mut tg, &tikadoc)?;
                         if cli.occurrences_of("v") > 0 {
                             //if let Ok(p) = tikadoc.full_path.into_string() {
                             //    println!("✅ {}", p);
@@ -139,14 +139,14 @@ fn main() -> Result<(), Report> {
     Ok(())
 }
 
-fn index(
+fn perform_index(
     db: &mut WritableDatabase,
     tg: &mut TermGenerator,
     tikadoc: &TikaDocument,
 ) -> Result<(), Report> {
     // Create a new Xapian Document to store attributes on the passed-in TikaDocument
-    let mut xdoc = Document::new()?;
-    tg.set_document(&mut xdoc)?;
+    let mut doc = Document::new()?;
+    tg.set_document(&mut doc)?;
 
     tg.index_text_with_prefix(&tikadoc.author, "A")?;
     tg.index_text_with_prefix(&tikadoc.date_str()?, "D")?;
@@ -155,11 +155,12 @@ fn index(
     tg.index_text_with_prefix(&tikadoc.title, "S")?;
     //tg.index_text_with_prefix(&tikadoc.subtitle, "XS")?;
 
-    xdoc.set_data(&tikadoc.body)?;
+    tg.index_text(&tikadoc.body)?;
+    doc.set_data(&tikadoc.body)?;
 
     let id = "Q".to_owned() + &tikadoc.filename;
-    xdoc.add_boolean_term(&id)?;
-    db.replace_document(&id, &mut xdoc)?;
+    doc.add_boolean_term(&id)?;
+    db.replace_document(&id, &mut doc)?;
 
     Ok(())
 }
@@ -176,9 +177,9 @@ fn query() -> Result<(), Report> {
         | FlagBooleanAnyCase as i16
         | FlagSpellingCorrection as i16;
     //let flags = FlagDefault as i16;
-    //let mut query = qp.parse_query("openssl", flags).expect("not found");
+    let mut query = qp.parse_query("vkms", flags).expect("not found");
     //let mut query = qp.parse_query("author:ssosik", flags).expect("not found");
-    let mut query = qp.parse_query("*", flags).expect("not found");
+    //let mut query = qp.parse_query("*", flags).expect("not found");
     let mut enq = db.new_enquire()?;
     enq.set_query(&mut query)?;
     let mut mset = enq.get_mset(0, 10)?;

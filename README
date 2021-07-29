@@ -35,8 +35,8 @@ DYLD_LIBRARY_PATH=xapian-core-1.4.17/.libs/ ./target/debug/xapian-rusty-test -i
 
 
 # TODO
-- unit tests
-- statically link xapian-core
-- cleanups, refactoring, clippy and linting
 - TUI interactive querying
 - Cache MD5 hashes of files using `kv` to skip indexing unchanged files
+- unit tests
+- cleanups, refactoring, clippy and linting
+- statically link xapian-core
