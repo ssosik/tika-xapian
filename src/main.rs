@@ -153,9 +153,15 @@ fn perform_index(
     tg.index_text_with_prefix(&tikadoc.filename, "F")?;
     tg.index_text_with_prefix(&tikadoc.full_path.clone().into_string().unwrap(), "F")?;
     tg.index_text_with_prefix(&tikadoc.title, "S")?;
-    //tg.index_text_with_prefix(&tikadoc.subtitle, "XS")?;
+    tg.index_text_with_prefix(&tikadoc.subtitle, "XS")?;
+    for tag in &tikadoc.tags {
+        tg.index_text_with_prefix(&tag, "K")?;
+    }
 
-    //tg.index_text(&tikadoc.body)?;
+    tg.index_text(&tikadoc.body)?;
+
+    // TODO This should be a JSON blob so we can retrieve various pieces when displaying query
+    // results: e.g. filename or Title
     doc.set_data(&tikadoc.body)?;
 
     let id = "Q".to_owned() + &tikadoc.filename;
@@ -178,7 +184,9 @@ fn query() -> Result<(), Report> {
         | FlagSpellingCorrection as i16;
     //let flags = FlagDefault as i16;
     //let mut query = qp.parse_query("vkms AND openssl", flags).expect("not found");
-    let mut query = qp.parse_query_with_prefix("vim", flags, "S").expect("not found");
+    let mut query = qp
+        .parse_query_with_prefix("vim", flags, "S")
+        .expect("not found");
     //let mut query = qp.parse_query("*", flags).expect("not found");
     let mut enq = db.new_enquire()?;
     enq.set_query(&mut query)?;

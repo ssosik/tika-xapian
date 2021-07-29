@@ -28,12 +28,16 @@ pub(crate) struct TikaDocument {
     /// FrontMatter-derived metadata about the document
     #[serde(default)]
     pub author: String,
+    /// RFC 3339 based timestamp
     pub date: String,
 
-    /// RFC 3339 based timestamp
     #[serde(deserialize_with = "string_or_list_string")]
     pub tags: Vec<String>,
+
     pub title: String,
+
+    #[serde(default)]
+    pub subtitle: String,
 
     /// The Markdown-formatted body of the document
     #[serde(skip_deserializing)]
