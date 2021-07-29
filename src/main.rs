@@ -80,6 +80,30 @@ fn main() -> Result<(), Report> {
         let mut stemmer = Stem::new("en")?;
         tg.set_stemmer(&mut stemmer)?;
 
+        ////let (matches, errors): (Vec<_>, Vec<_>) = glob_files(
+        //glob_files(
+        //    &cli.value_of("config").unwrap(),
+        //    cli.value_of("source"),
+        //    cli.occurrences_of("v") as i8,
+        //)
+        //    .into_iter()
+        //.map(|entry| match entry {
+        //    Ok(path) => {
+        //            if let Ok(tikadoc) = parse_file(&path) {
+        //                index(&mut db, &mut tg, &tikadoc)?;
+        //                if cli.occurrences_of("v") > 0 {
+        //                    if let Ok(p) = tikadoc.full_path.into_string() {
+        //                        println!("✅ {}", p);
+        //                    }
+        //                }
+        //            } else {
+        //                eprintln!("❌ Failed to load file {}", path.display());
+        //            }
+        //    }
+        //    Err(e) => println!("{:?}", e),
+        //})
+        //.partition(Result::is_ok);
+
         for entry in glob_files(
             &cli.value_of("config").unwrap(),
             cli.value_of("source"),
@@ -88,11 +112,15 @@ fn main() -> Result<(), Report> {
         .expect("Failed to read glob pattern")
         {
             match entry {
+                // TODO convert this to iterator style using map/filter
                 Ok(path) => {
-                    if let Ok(doc) = parse_file(&path) {
-                        index(&mut db, &mut tg, &doc)?;
+                    if let Ok(tikadoc) = parse_file(&path) {
+                        index(&mut db, &mut tg, &tikadoc)?;
                         if cli.occurrences_of("v") > 0 {
-                            println!("✅ {}", f);
+                            //if let Ok(p) = tikadoc.full_path.into_string() {
+                            //    println!("✅ {}", p);
+                            //}
+                            println!("✅ {}", tikadoc.filename);
                         }
                     } else {
                         eprintln!("❌ Failed to load file {}", path.display());
@@ -114,21 +142,22 @@ fn main() -> Result<(), Report> {
 fn index(
     db: &mut WritableDatabase,
     tg: &mut TermGenerator,
-    doc: &TikaDocument,
+    tikadoc: &TikaDocument,
 ) -> Result<(), Report> {
     // Create a new Xapian Document to store attributes on the passed-in TikaDocument
     let mut xdoc = Document::new()?;
     tg.set_document(&mut xdoc)?;
 
-    tg.index_text_with_prefix(&doc.author, "A")?;
-    tg.index_text_with_prefix(&doc.date_str()?, "D")?;
-    tg.index_text_with_prefix(&doc.filename, "F")?;
-    tg.index_text_with_prefix(&doc.title, "S")?;
-    //tg.index_text_with_prefix(&doc.subtitle, "XS")?;
+    tg.index_text_with_prefix(&tikadoc.author, "A")?;
+    tg.index_text_with_prefix(&tikadoc.date_str()?, "D")?;
+    tg.index_text_with_prefix(&tikadoc.filename, "F")?;
+    tg.index_text_with_prefix(&tikadoc.full_path.clone().into_string().unwrap(), "F")?;
+    tg.index_text_with_prefix(&tikadoc.title, "S")?;
+    //tg.index_text_with_prefix(&tikadoc.subtitle, "XS")?;
 
-    xdoc.set_data(&doc.body)?;
+    xdoc.set_data(&tikadoc.body)?;
 
-    let id = "Q".to_owned() + &doc.filename;
+    let id = "Q".to_owned() + &tikadoc.filename;
     xdoc.add_boolean_term(&id)?;
     db.replace_document(&id, &mut xdoc)?;
 

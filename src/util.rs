@@ -31,7 +31,7 @@ pub(crate) fn glob_files(
         println!("Sourcing Markdown documents matching : {}", glob_str);
     }
 
-    return Ok(glob(&glob_str)?);
+    return Ok(glob(&glob_str).expect("Failed to read glob pattern"));
 }
 
 pub(crate) mod event {
