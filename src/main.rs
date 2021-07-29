@@ -83,7 +83,7 @@ fn main() -> Result<(), Report> {
         for entry in glob_files(
             &cli.value_of("config").unwrap(),
             cli.value_of("source"),
-            cli.occurrences_of("verbosity") as i8,
+            cli.occurrences_of("v") as i8,
         )
         .expect("Failed to read glob pattern")
         {
@@ -164,8 +164,14 @@ fn query() -> Result<(), Report> {
     println!("Approximate Matches {}", appxMatches);
 
     for mut v in mset.iterator() {
-        let data = v.get_document_data()?;
-        println!("Match {}", data);
+        //let data = v.get_document_data()?;
+        //println!("Match {}", data);
+        let res = v.get_document_data();
+        if let Ok(data) = res {
+            println!("Match {}", data);
+        } else {
+            eprintln!("No Matches");
+        }
     }
 
     Ok(())
