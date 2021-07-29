@@ -243,8 +243,14 @@ fn interactive_query() -> Result<(), Report> {
     let mut stem = Stem::new("en")?;
     qp.set_stemmer(&mut stem)?;
 
-    let flags =
-        FlagBoolean as i16 | FlagPhrase as i16 | FlagLovehate as i16 | FlagBooleanAnyCase as i16;
+    let flags = FlagBoolean as i16
+        | FlagPhrase as i16
+        | FlagLovehate as i16
+        | FlagBooleanAnyCase as i16
+        | FlagWildcard as i16
+        | FlagPureNot as i16
+        | FlagPartial as i16
+        | FlagSpellingCorrection as i16;
 
     let mut selected: Vec<String> = Vec::new();
 
@@ -332,6 +338,7 @@ fn interactive_query() -> Result<(), Report> {
             enq.set_query(&mut query)?;
             let mut mset = enq.get_mset(0, 100)?;
 
+            app.matches = Vec::new();
             let mut v = mset.iterator().unwrap();
             while v.is_next().unwrap() {
                 let res = v.get_document_data();
