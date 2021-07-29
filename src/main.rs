@@ -155,7 +155,7 @@ fn perform_index(
     tg.index_text_with_prefix(&tikadoc.title, "S")?;
     //tg.index_text_with_prefix(&tikadoc.subtitle, "XS")?;
 
-    tg.index_text(&tikadoc.body)?;
+    //tg.index_text(&tikadoc.body)?;
     doc.set_data(&tikadoc.body)?;
 
     let id = "Q".to_owned() + &tikadoc.filename;
@@ -177,8 +177,8 @@ fn query() -> Result<(), Report> {
         | FlagBooleanAnyCase as i16
         | FlagSpellingCorrection as i16;
     //let flags = FlagDefault as i16;
-    let mut query = qp.parse_query("vkms", flags).expect("not found");
-    //let mut query = qp.parse_query("author:ssosik", flags).expect("not found");
+    //let mut query = qp.parse_query("vkms AND openssl", flags).expect("not found");
+    let mut query = qp.parse_query_with_prefix("vim", flags, "S").expect("not found");
     //let mut query = qp.parse_query("*", flags).expect("not found");
     let mut enq = db.new_enquire()?;
     enq.set_query(&mut query)?;
