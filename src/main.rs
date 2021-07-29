@@ -90,16 +90,9 @@ fn main() -> Result<(), Report> {
             match entry {
                 Ok(path) => {
                     if let Ok(doc) = parse_file(&path) {
-                        if let Some(f) = path.to_str() {
-                            index(&mut db, &mut tg, &doc)?;
-                            if cli.occurrences_of("v") > 0 {
-                                println!("✅ {}", f);
-                            }
-                        } else {
-                            eprintln!(
-                                "❌ Failed to parse time '{}' from {}",
-                                doc.date, doc.filename
-                            );
+                        index(&mut db, &mut tg, &doc)?;
+                        if cli.occurrences_of("v") > 0 {
+                            println!("✅ {}", f);
                         }
                     } else {
                         eprintln!("❌ Failed to load file {}", path.display());
@@ -155,7 +148,8 @@ fn query() -> Result<(), Report> {
         | FlagSpellingCorrection as i16;
     //let flags = FlagDefault as i16;
     //let mut query = qp.parse_query("openssl", flags).expect("not found");
-    let mut query = qp.parse_query("author:steve", flags).expect("not found");
+    //let mut query = qp.parse_query("author:ssosik", flags).expect("not found");
+    let mut query = qp.parse_query("*", flags).expect("not found");
     let mut enq = db.new_enquire()?;
     enq.set_query(&mut query)?;
     let mut mset = enq.get_mset(0, 10)?;
