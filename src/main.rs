@@ -217,10 +217,10 @@ pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
     // Note that case insensitive comparison is not well defined for unicode,
     // and that you might have bad surprises
     alt((
-        value(&XapianOp::OpAnd, tag_no_case("AND")),
         value(&XapianOp::OpAndNot, tag_no_case("AND NOT")),
-        value(&XapianOp::OpOr, tag_no_case("OR")),
+        value(&XapianOp::OpAnd, tag_no_case("AND")),
         value(&XapianOp::OpXor, tag_no_case("XOR")),
+        value(&XapianOp::OpOr, tag_no_case("OR")),
         // OpAndMaybe,
         // OpFilter,
         // OpNear,
@@ -234,73 +234,10 @@ pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
     ))(input)
 }
 
-//pub fn matcher(input: &str) -> IResult<&str, Vec<String>> {
-//    // From https://github.com/Geal/nom/blob/master/doc/choosing_a_combinator.md
-//    // Note that case insensitive comparison is not well defined for unicode,
-//    // and that you might have bad surprises
-//    alt((
-//        value(&XapianOp::OpAnd, tag_no_case("AND")),
-//        value(&XapianOp::OpAndNot, tag_no_case("AND NOT")),
-//        value(&XapianOp::OpOr, tag_no_case("OR")),
-//        value(&XapianOp::OpXor, tag_no_case("XOR")),
-//        // OpAndMaybe,
-//        // OpFilter,
-//        // OpNear,
-//        // OpPhrase,
-//        // OpValueRange,
-//        // OpScaleWeight,
-//        // OpEliteSet,
-//        // OpValueGe,
-//        // OpValueLe,
-//        // OpSynonym,
-//    ))(input)
-//}
-
-////pub fn match_query<'a, 'b>(qp: &'b QueryParser, input: &'a str) -> IResult<&'a str, &'a Query> {
-//pub fn match_query<'a, 'b>(qp: &'b QueryParser, input: &'a str) -> IResult<&'a str, &'a str> {
-//    let flags = FlagBoolean as i16
-//        | FlagPhrase as i16
-//        | FlagLovehate as i16
-//        | FlagBooleanAnyCase as i16
-//        | FlagWildcard as i16
-//        | FlagPureNot as i16
-//        | FlagPartial as i16
-//        | FlagSpellingCorrection as i16;
-//
-//    //let mut query = qp.parse_query("a*", flags).expect("not found");
-//    alt((
-//        value(&"foo", match_op),
-//    ))(input)
-//}
-
-//named!( words_and_ws, take_while!( alt((alphanumeric1, space0)) ) );
-
 fn nom_test() {
     //let andedwords = r#"vault openssl AND vkms"#;
-    let andedwords = r#"AND vkms"#;
+    let andedwords = r#"aaabcde c AND NOT vkms"#;
 
-    //let mut matcher = tuple::<&str, _, (_, _), _>((
-    //    words_and_ws,
-    //    alt((
-    //        tag_no_case("AND"),
-    //        tag_no_case("AND NOT"),
-    //        tag_no_case("OR"),
-    //        tag_no_case("XOR"),
-    //    )),
-    //    alt((alphanumeric1, space0)),
-    //));
-
-    //let mut matcher = terminated::<&str, _, _, (_, _), _, _>(
-    //    alt((words_and_ws)),
-    //    alt((
-    //        tag_no_case("AND"),
-    //        tag_no_case("AND NOT"),
-    //        tag_no_case("OR"),
-    //        tag_no_case("XOR"),
-    //    )),
-    //);
-
-    //named!(x, take_until!("AND"));
     named!(x,
         alt!(
             complete!(take_until!("AND NOT")) |
@@ -313,7 +250,8 @@ fn nom_test() {
     let (a,b) = res.unwrap();
     println!("Matcher Res: '{}' '{}'", str::from_utf8(&b).unwrap(), str::from_utf8(&a).unwrap());
 
-    match match_op(andedwords) {
+    //match match_op(andedwords) {
+    match match_op(str::from_utf8(&a).unwrap()) {
         Ok((a, b)) => {
             match b {
                 // Order these by longest match, according to
