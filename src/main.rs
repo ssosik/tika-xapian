@@ -138,11 +138,11 @@ fn main() -> Result<(), Report> {
         db.commit()?;
     }
 
-    parse_user_query(r#"aaabcde c AND NOT vkms"#)?;
-    //parse_user_query(r#"openssl x509 and not vkms and not curl"#)?;
-    //parse_user_query(r#""#)?;
+    //let q = parse_user_query(r#"aaabcde c AND NOT vkms"#)?;
+    let q = parse_user_query(r#"openssl x509 and not vkms and not curl"#)?;
+    //let q = parse_user_query(r#""#)?;
 
-    //perform_query()?;
+    perform_query(q)?;
     //interactive_query()?;
 
     Ok(())
@@ -257,7 +257,7 @@ named!(
     )
 );
 
-fn parse_user_query(mut qstr: &str) -> Result<(), Report> {
+fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
     qp.set_stemmer(&mut stem)?;
@@ -273,7 +273,7 @@ fn parse_user_query(mut qstr: &str) -> Result<(), Report> {
 
     // Accumulators, start them off as empty options
     let mut query: Option<Query> = None;
-    let operator: Option<&XapianOp> = None;
+    let mut operator: Option<&XapianOp> = None;
 
     // Combine queries
     //let mut query = qp
@@ -297,8 +297,10 @@ fn parse_user_query(mut qstr: &str) -> Result<(), Report> {
                 println!("Query: '{}'", curr_query);
                 qstr = str::from_utf8(&remaining)?;
                 if query.is_none() {
-                    println!("About to parse query string {}", curr_query);
-                    let mut q = qp.parse_query(curr_query, flags).expect("QueryParser error");
+                    //println!("About to parse query string {}", curr_query);
+                    let q = qp
+                        .parse_query(curr_query, flags)
+                        .expect("QueryParser error");
                     query = Some(q);
                 } else {
                     let op = match operator {
@@ -314,7 +316,7 @@ fn parse_user_query(mut qstr: &str) -> Result<(), Report> {
                     query = Some(
                         query
                             .unwrap()
-                            .add_right(op, &mut qp.parse_query(qstr, flags)?)
+                            .add_right(op, &mut qp.parse_query(curr_query, flags)?)
                             .expect("Failed to add_right()"),
                     );
                 }
@@ -324,21 +326,14 @@ fn parse_user_query(mut qstr: &str) -> Result<(), Report> {
         //println!("QSTR: {}", qstr);
         match match_op(&qstr) {
             Ok((remaining, op)) => {
-                match op {
-                    XapianOp::OpAndNot => {
-                        println!("Operator: AND NOT");
-                    }
-                    XapianOp::OpAnd => {
-                        println!("Operator: AND");
-                    }
-                    XapianOp::OpXor => {
-                        println!("Operator: XOR");
-                    }
-                    XapianOp::OpOr => {
-                        println!("Operator: OR");
-                    }
+                operator = match op {
+                    XapianOp::OpAndNot => Some(&XapianOp::OpAndNot),
+                    XapianOp::OpAnd => Some(&XapianOp::OpAnd),
+                    XapianOp::OpXor => Some(&XapianOp::OpXor),
+                    XapianOp::OpOr => Some(&XapianOp::OpOr),
                     _ => {
-                        println!("UNSUPPORTED: {}", remaining)
+                        eprintln!("Found unsupported Xapian Operation");
+                        Some(&XapianOp::OpAnd)
                     }
                 };
                 qstr = remaining
@@ -379,7 +374,7 @@ fn parse_user_query(mut qstr: &str) -> Result<(), Report> {
     //};
 
     println!("Done");
-    Ok(())
+    Ok(query.unwrap())
 }
 
 fn perform_index(
@@ -413,8 +408,32 @@ fn perform_index(
     Ok(())
 }
 
+fn perform_query(mut q: Query) -> Result<(), Report> {
+    let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
+
+    let mut enq = db.new_enquire()?;
+    enq.set_query(&mut q)?;
+    let mut mset = enq.get_mset(0, 100)?;
+    let appx_matches = mset.get_matches_estimated()?;
+    println!("Approximate Matches {}", appx_matches);
+
+    let mut v = mset.iterator().unwrap();
+    while v.is_next().unwrap() {
+        let res = v.get_document_data();
+        if let Ok(data) = res {
+            let v: TikaDocument = serde_json::from_str(&data)?;
+            println!("Match {}", v.filename);
+        } else {
+            eprintln!("No Matches");
+        }
+        v.next()?;
+    }
+
+    Ok(())
+}
+
 #[allow(dead_code)]
-fn perform_query() -> Result<(), Report> {
+fn perform_query_canned() -> Result<(), Report> {
     let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
