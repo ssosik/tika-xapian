@@ -155,7 +155,7 @@ use nom::{
     Err,
     {
         add_return_error, call, char, delimited, error_node_position, error_position, escaped,
-        is_not, named, none_of, one_of, peek, tag, tuple, take_while, take_until,
+        is_not, named, none_of, one_of, peek, tag, tuple, take_while, take_until, alt, complete
     },
 };
 
@@ -276,8 +276,8 @@ pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
 //named!( words_and_ws, take_while!( alt((alphanumeric1, space0)) ) );
 
 fn nom_test() {
-    let andedwords = r#"vault openssl AND vkms"#;
-    //let andedwords = r#"XOR vkms"#;
+    //let andedwords = r#"vault openssl AND vkms"#;
+    let andedwords = r#"AND vkms"#;
 
     //let mut matcher = tuple::<&str, _, (_, _), _>((
     //    words_and_ws,
@@ -300,7 +300,14 @@ fn nom_test() {
     //    )),
     //);
 
-    named!(x, take_until!("AND"));
+    //named!(x, take_until!("AND"));
+    named!(x,
+        alt!(
+            complete!(take_until!("AND NOT")) |
+            complete!(take_until!("AND")) |
+            complete!(take_until!("XOR")) |
+            complete!(take_until!("OR"))
+        ));
     //let res = matcher(andedwords);
     let res = x(andedwords.as_bytes());
     let (a,b) = res.unwrap();
