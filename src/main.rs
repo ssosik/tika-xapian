@@ -175,30 +175,41 @@ named!(
 );
 
 // Xapian tags in human format, e.g. "author;" or "title:"
-#[allow(dead_code)]
 #[derive(Debug)]
-enum XTags {
+pub enum XTag {
     Author,
     Date,
     Filename,
     Fullpath,
     Title,
     Subtitle,
-    Tags,
+    Tag,
 }
 
-impl XTags {
+impl XTag {
     fn to_xapian<'a>(self) -> &'a [u8] {
         match self {
-            XTags::Author => { "A".as_bytes() },
-            XTags::Date => { "D".as_bytes() },
-            XTags::Filename => { "F".as_bytes() },
-            XTags::Fullpath => { "F".as_bytes() },
-            XTags::Title => { "S".as_bytes() },
-            XTags::Subtitle => { "XS".as_bytes() },
-            XTags::Tags => { "K".as_bytes() },
+            XTag::Author => "A".as_bytes(),
+            XTag::Date => "D".as_bytes(),
+            XTag::Filename => "F".as_bytes(),
+            XTag::Fullpath => "F".as_bytes(),
+            XTag::Title => "S".as_bytes(),
+            XTag::Subtitle => "XS".as_bytes(),
+            XTag::Tag => "K".as_bytes(),
         }
     }
+}
+
+pub fn match_xtag(input: &str) -> IResult<&str, &XTag> {
+    alt((
+        value(&XTag::Author, tag("author:")),
+        value(&XTag::Date, tag("date:")),
+        value(&XTag::Filename, tag("filename:")),
+        value(&XTag::Fullpath, tag("fullpath:")),
+        value(&XTag::Title, tag("title:")),
+        value(&XTag::Subtitle, tag("subtitle:")),
+        value(&XTag::Tag, tag("tag:")),
+    ))(input)
 }
 
 pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
@@ -207,6 +218,16 @@ pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
         value(&XapianOp::OpAndNot, tag("AND NOT")),
         value(&XapianOp::OpOr, tag("OR")),
         value(&XapianOp::OpXor, tag("XOR")),
+        // OpAndMaybe,
+        // OpFilter,
+        // OpNear,
+        // OpPhrase,
+        // OpValueRange,
+        // OpScaleWeight,
+        // OpEliteSet,
+        // OpValueGe,
+        // OpValueLe,
+        // OpSynonym,
     ))(input)
 }
 
