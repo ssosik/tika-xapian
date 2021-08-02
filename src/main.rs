@@ -174,6 +174,33 @@ named!(
     delimited!(tag!(r#"""#), is_not(r#"""#), tag!(r#"""#))
 );
 
+// Xapian tags in human format, e.g. "author;" or "title:"
+#[allow(dead_code)]
+#[derive(Debug)]
+enum XTags {
+    Author,
+    Date,
+    Filename,
+    Fullpath,
+    Title,
+    Subtitle,
+    Tags,
+}
+
+impl XTags {
+    fn to_xapian<'a>(self) -> &'a [u8] {
+        match self {
+            XTags::Author => { "A".as_bytes() },
+            XTags::Date => { "D".as_bytes() },
+            XTags::Filename => { "F".as_bytes() },
+            XTags::Fullpath => { "F".as_bytes() },
+            XTags::Title => { "S".as_bytes() },
+            XTags::Subtitle => { "XS".as_bytes() },
+            XTags::Tags => { "K".as_bytes() },
+        }
+    }
+}
+
 pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
     alt((
         value(&XapianOp::OpAnd, tag("AND")),
