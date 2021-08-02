@@ -251,7 +251,7 @@ named!(
     )
 );
 
-fn parse_query(qstr: &str) -> Result<(), Report> {
+fn parse_query(mut qstr: &str) -> Result<(), Report> {
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
     qp.set_stemmer(&mut stem)?;
@@ -265,44 +265,47 @@ fn parse_query(qstr: &str) -> Result<(), Report> {
         | FlagPartial as i16
         | FlagSpellingCorrection as i16;
 
+    //while qstr.len() > 0 {
     match take_up_to_operator(qstr.as_bytes()) {
         Err(e) => {
-            println!("Matcher error: '{}' in: '{}'", e, qstr)
+            println!("Matcher error: '{}' in: '{}'", e, qstr);
+            //break;
         }
-        Ok((remaining, query)) => {
-            println!(
-                "Matcher query: '{}' remaining: '{}'",
-                str::from_utf8(&query)?,
-                str::from_utf8(&remaining)?
-            );
+        Ok((remaining, current)) => {
+            println!("Query: '{}'", str::from_utf8(&current)?,);
+            qstr = str::from_utf8(&remaining)?;
+        }
+    };
 
-            println!("QSTR: {}", qstr);
-            match match_op(str::from_utf8(&remaining)?) {
-                Ok((a, b)) => {
-                    match b {
-                        XapianOp::OpAndNot => {
-                            println!("AND NOT: {}", a,)
-                        }
-                        XapianOp::OpAnd => {
-                            println!("AND: {}", a,)
-                        }
-                        XapianOp::OpXor => {
-                            println!("XOR: {}", a,)
-                        }
-                        XapianOp::OpOr => {
-                            println!("OR: {}", a,)
-                        }
-                        _ => {
-                            println!("UNSUPPORTED: {}", a)
-                        }
-                    };
+    println!("QSTR: {}", qstr);
+    match match_op(&qstr) {
+        Ok((remaining, op)) => {
+            match op {
+                XapianOp::OpAndNot => {
+                    println!("AND NOT: {}", remaining)
                 }
-                Err(e) => {
-                    println!("AndedWords no good: {}", e);
+                XapianOp::OpAnd => {
+                    println!("AND: {}", remaining)
+                }
+                XapianOp::OpXor => {
+                    println!("XOR: {}", remaining)
+                }
+                XapianOp::OpOr => {
+                    println!("OR: {}", remaining)
+                }
+                _ => {
+                    println!("UNSUPPORTED: {}", remaining)
                 }
             };
         }
-    }
+        Err(e) => {
+            println!("AndedWords no good: {}", e);
+        }
+    };
+
+    println!("QSTR: {}", qstr);
+
+    //}
 
     //let dblqtd = r#""openssl x509" AND vkms"#;
     //match doublequoted(dblqtd.as_bytes()) {
