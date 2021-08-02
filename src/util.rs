@@ -34,6 +34,7 @@ pub(crate) fn glob_files(
     return Ok(glob(&glob_str).expect("Failed to read glob pattern"));
 }
 
+#[allow(dead_code)]
 pub(crate) mod event {
 
     use rand::distributions::{Distribution, Uniform};

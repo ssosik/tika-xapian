@@ -11,6 +11,7 @@ use xapian_rusty::FeatureFlag::{
     FlagBoolean, FlagBooleanAnyCase, FlagLovehate, FlagPartial, FlagPhrase, FlagPureNot,
     FlagSpellingCorrection, FlagWildcard,
 };
+#[allow(unused_imports)]
 use xapian_rusty::{
     Database, Document, Query, QueryParser, Stem, TermGenerator, WritableDatabase, XapianOp, BRASS,
     DB_CREATE_OR_OPEN, DB_CREATE_OR_OVERWRITE,
@@ -144,16 +145,21 @@ fn main() -> Result<(), Report> {
     Ok(())
 }
 
+#[allow(unused_imports)]
 use nom::{
     bytes::complete::{is_not, tag_no_case, take_while1, take_while_m_n},
     character::complete::{alpha1, anychar, char},
     combinator::map_res,
-    error::{ParseError, ErrorKind},
+    error::{ErrorKind, ParseError},
     sequence::tuple,
     Err,
-    {call, char, delimited, escaped, is_not, named, none_of, one_of, tag, add_return_error, error_node_position, error_position},
+    {
+        add_return_error, call, char, delimited, error_node_position, error_position, escaped,
+        is_not, named, none_of, one_of, tag,
+    },
 };
 
+#[allow(unused_imports)]
 use nom::{
     branch::alt,
     bytes::complete::{escaped, tag},
@@ -164,36 +170,16 @@ use nom::{
 use std::str;
 
 named!(
-    parens,
+    doublequoted,
     delimited!(tag!(r#"""#), is_not(r#"""#), tag!(r#"""#))
 );
 
-//named!(esc, escaped!(call!(alpha1), '\\', one_of!("\"\n\'\\")));
-named!(esc, escaped!(call!(anychar), '\\', one_of!("\"\n\'\\")));
-named!(quoted, delimited!(tag!(r#"""#), alpha1, tag!(r#"""#)));
-
-fn parse_quoted(input: &str) -> IResult<&str, &str> {
-    let esc = escaped(none_of("\\\'"), '\\', tag("'"));
-    let esc_or_empty = alt((esc, tag("")));
-    let res = delimited(tag("'"), esc_or_empty, tag("'"))(input)?;
-
-    Ok(res)
-}
-
-named!(err_test, add_return_error!(ErrorKind::Tag, tag!("abcd")));
-
 fn nom_test() {
-
-    let a = &b"efghblah"[..];
-    let res_a = err_test(a);
-    assert_eq!(res_a, Err(Err::Error(error_node_position!(a, ErrorKind::Tag, error_position!(a, ErrorKind::Tag)))));
-    println!("Error: {:?}", res_a);
-
     let qstr1 = r#"openssl AND NOT author:"steve sosik""#;
     let qstr2 = r#"openssl AND vkms"#;
     let qstr3 = r#""openssl x509" AND vkms"#;
 
-    match parens(qstr1.as_bytes()) {
+    match doublequoted(qstr1.as_bytes()) {
         Ok((a, b)) => {
             println!(
                 "A: {} B:{}",
@@ -205,7 +191,7 @@ fn nom_test() {
             println!("First no good: {}", e);
         }
     };
-    match parens(qstr2.as_bytes()) {
+    match doublequoted(qstr2.as_bytes()) {
         Ok((a, b)) => {
             println!(
                 "A: {} B:{}",
@@ -217,7 +203,7 @@ fn nom_test() {
             println!("Second no good: {}", e);
         }
     };
-    match parens(qstr3.as_bytes()) {
+    match doublequoted(qstr3.as_bytes()) {
         Ok((a, b)) => {
             println!(
                 "A: {} B:{}",
@@ -230,15 +216,6 @@ fn nom_test() {
         }
     };
 
-    let (a, res) = parse_quoted(r#"'foo\' 🤖 bar'"#).unwrap();
-    println!("A: {} B: {}", a, res);
-    assert_eq!(res, r#"foo\' 🤖 bar"#);
-    let (_, res) = parse_quoted("'λx → x'").unwrap();
-    assert_eq!(res, "λx → x");
-    let (_, res) = parse_quoted("'  '").unwrap();
-    assert_eq!(res, "  ");
-    let (_, res) = parse_quoted("''").unwrap();
-    assert_eq!(res, "");
     // From https://github.com/Geal/nom/blob/master/doc/choosing_a_combinator.md
     // Note that case insensitive comparison is not well defined for unicode, and that you might have bad surprises
     //let AND = tag_no_case("and");
@@ -296,6 +273,7 @@ fn perform_index(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn query() -> Result<(), Report> {
     let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
     let mut qp = QueryParser::new()?;
@@ -349,6 +327,7 @@ fn query() -> Result<(), Report> {
 // TODO Move as much of this as possible out into tui_app.rs
 use std::io;
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+#[allow(unused_imports)]
 use tui::{
     backend::TermionBackend,
     layout::{Constraint, Direction, Layout},
@@ -359,6 +338,7 @@ use tui::{
 };
 
 /// Interactive query interface
+#[allow(dead_code)]
 fn interactive_query() -> Result<(), Report> {
     let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
     let mut qp = QueryParser::new()?;
