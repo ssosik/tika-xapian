@@ -146,11 +146,11 @@ fn main() -> Result<(), Report> {
 
 use nom::{
     bytes::complete::{is_not, tag_no_case, take_while1, take_while_m_n},
-    character::complete::{alpha1, char},
+    character::complete::{alpha1, char, anychar},
     combinator::map_res,
     error::ParseError,
     sequence::tuple,
-    {char, delimited, is_not, named, tag},
+    {char, delimited, is_not, named, tag, escaped, call, one_of, none_of},
 };
 
 use nom::{
@@ -160,11 +160,16 @@ use nom::{
     sequence::delimited,
     IResult,
 };
+use std::str;
 
 named!(
     parens,
     delimited!(tag!(r#"""#), is_not(r#"""#), tag!(r#"""#))
 );
+
+//named!(esc, escaped!(call!(alpha1), '\\', one_of!("\"n\\")));
+named!(esc, escaped!(call!(anychar), '\\', one_of!("\"\n\'\\")));
+
 
 fn parse_quoted(input: &str) -> IResult<&str, &str> {
     let esc = escaped(none_of("\\\'"), '\\', tag("'"));
@@ -177,6 +182,16 @@ fn parse_quoted(input: &str) -> IResult<&str, &str> {
 fn nom_test() {
     let qstr1 = r#"openssl AND NOT author:"steve sosik""#;
     let qstr2 = r#"openssl AND vkms"#;
+    let qstr3 = r#""openssl x509" AND vkms"#;
+
+    let (a,b) = esc(qstr1.as_bytes()).unwrap();
+    println!("A: {} B:{}", str::from_utf8(a).unwrap(), str::from_utf8(b).unwrap());
+
+    let (a,b) = esc(qstr2.as_bytes()).unwrap();
+    println!("A: {} B:{}", str::from_utf8(a).unwrap(), str::from_utf8(b).unwrap());
+
+    let (a,b) = esc(qstr3.as_bytes()).unwrap();
+    println!("A: {} B:{}", str::from_utf8(a).unwrap(), str::from_utf8(b).unwrap());
 
     let (a, res) = parse_quoted(r#"'foo\' 🤖 bar'"#).unwrap();
     println!("A: {} {}", a, res);
