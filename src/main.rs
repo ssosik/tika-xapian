@@ -184,14 +184,27 @@ pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
 }
 
 fn nom_test() {
-    let andedwords = r#"openssl AND vkms"#;
-    match doublequoted(andedwords.as_bytes()) {
+    //let andedwords = r#"openssl AND vkms"#;
+    let andedwords = r#"XOR vkms"#;
+    match match_op(andedwords) {
         Ok((a, b)) => {
-            println!(
-                "A: {} B:{}",
-                str::from_utf8(a).unwrap(),
-                str::from_utf8(b).unwrap()
-            );
+            match b {
+                XapianOp::OpAnd => {
+                    println!("AND: {}", a,)
+                }
+                XapianOp::OpAndNot => {
+                    println!("AND NOT: {}", a,)
+                }
+                XapianOp::OpOr => {
+                    println!("OR: {}", a,)
+                }
+                XapianOp::OpXor => {
+                    println!("XOR: {}", a,)
+                }
+                _ => {
+                    println!("UNSUPPORTED: {}", a)
+                }
+            };
         }
         Err(e) => {
             println!("AndedWords no good: {}", e);
@@ -202,7 +215,7 @@ fn nom_test() {
     match doublequoted(dblqtd.as_bytes()) {
         Ok((a, b)) => {
             println!(
-                "A: {} B:{}",
+                "DBL A: {} B:{}",
                 str::from_utf8(a).unwrap(),
                 str::from_utf8(b).unwrap()
             );
@@ -216,7 +229,7 @@ fn nom_test() {
     match doublequoted(qstr1.as_bytes()) {
         Ok((a, b)) => {
             println!(
-                "A: {} B:{}",
+                "THING A: {} B:{}",
                 str::from_utf8(a).unwrap(),
                 str::from_utf8(b).unwrap()
             );
