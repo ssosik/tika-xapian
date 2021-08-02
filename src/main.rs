@@ -140,7 +140,11 @@ fn main() -> Result<(), Report> {
 
     //query()?;
     //interactive_query()?;
-    nom_test();
+
+    //let andedwords = r#"vault openssl AND vkms"#;
+    let andedwords = r#"aaabcde c AND NOT vkms"#;
+
+    nom_test(andedwords);
 
     Ok(())
 }
@@ -151,11 +155,12 @@ use nom::{
     character::complete::{alpha1, alphanumeric1, anychar, char, space0},
     combinator::{map_res, value},
     error::{ErrorKind, ParseError},
-    sequence::{tuple, terminated},
+    sequence::{terminated, tuple},
     Err,
     {
-        add_return_error, call, char, delimited, error_node_position, error_position, escaped,
-        is_not, named, none_of, one_of, peek, tag, tuple, take_while, take_until, alt, complete
+        add_return_error, alt, call, char, complete, delimited, error_node_position,
+        error_position, escaped, is_not, named, none_of, one_of, peek, tag, take_until, take_while,
+        tuple,
     },
 };
 
@@ -213,9 +218,13 @@ pub fn match_xtag(input: &str) -> IResult<&str, &XTag> {
 }
 
 pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
+    // Note 1:
     // From https://github.com/Geal/nom/blob/master/doc/choosing_a_combinator.md
     // Note that case insensitive comparison is not well defined for unicode,
     // and that you might have bad surprises
+    // Note 2:
+    // Order these by longest match, according to
+    // https://docs.rs/nom/6.2.1/nom/macro.alt.html#behaviour-of-alt
     alt((
         value(&XapianOp::OpAndNot, tag_no_case("AND NOT")),
         value(&XapianOp::OpAnd, tag_no_case("AND")),
@@ -234,28 +243,41 @@ pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
     ))(input)
 }
 
-fn nom_test() {
-    //let andedwords = r#"vault openssl AND vkms"#;
-    let andedwords = r#"aaabcde c AND NOT vkms"#;
+named!(
+    take_up_to_operator,
+    alt!(
+        complete!(take_until!("AND NOT"))
+            | complete!(take_until!("AND"))
+            | complete!(take_until!("XOR"))
+            | complete!(take_until!("OR"))
+    )
+);
 
-    named!(x,
-        alt!(
-            complete!(take_until!("AND NOT")) |
-            complete!(take_until!("AND")) |
-            complete!(take_until!("XOR")) |
-            complete!(take_until!("OR"))
-        ));
-    //let res = matcher(andedwords);
-    let res = x(andedwords.as_bytes());
-    let (a,b) = res.unwrap();
-    println!("Matcher Res: '{}' '{}'", str::from_utf8(&b).unwrap(), str::from_utf8(&a).unwrap());
+fn nom_test(qstr: &str) {
+    let mut qp = QueryParser::new().unwrap();
+    let mut stem = Stem::new("en").unwrap();
+    qp.set_stemmer(&mut stem).unwrap();
 
-    //match match_op(andedwords) {
-    match match_op(str::from_utf8(&a).unwrap()) {
+    let flags = FlagBoolean as i16
+        | FlagPhrase as i16
+        | FlagLovehate as i16
+        | FlagBooleanAnyCase as i16
+        | FlagWildcard as i16
+        | FlagPureNot as i16
+        | FlagPartial as i16
+        | FlagSpellingCorrection as i16;
+
+    let (remaining, query) = take_up_to_operator(qstr.as_bytes()).expect("Failed to take to operator");
+    println!(
+        "Matcher query: '{}' remaining: '{}'",
+        str::from_utf8(&query).unwrap(),
+        str::from_utf8(&remaining).unwrap()
+    );
+
+    println!("QSTR: {}", qstr);
+    match match_op(str::from_utf8(&remaining).unwrap()) {
         Ok((a, b)) => {
             match b {
-                // Order these by longest match, according to
-                // https://docs.rs/nom/6.2.1/nom/macro.alt.html#behaviour-of-alt
                 XapianOp::OpAndNot => {
                     println!("AND NOT: {}", a,)
                 }
@@ -278,47 +300,33 @@ fn nom_test() {
         }
     };
 
-    let dblqtd = r#""openssl x509" AND vkms"#;
-    match doublequoted(dblqtd.as_bytes()) {
-        Ok((a, b)) => {
-            println!(
-                "DBL A: {} B:{}",
-                str::from_utf8(a).unwrap(),
-                str::from_utf8(b).unwrap()
-            );
-        }
-        Err(e) => {
-            println!("DoubleQuote no good: {}", e);
-        }
-    };
+    //let dblqtd = r#""openssl x509" AND vkms"#;
+    //match doublequoted(dblqtd.as_bytes()) {
+    //    Ok((a, b)) => {
+    //        println!(
+    //            "DBL A: {} B:{}",
+    //            str::from_utf8(a).unwrap(),
+    //            str::from_utf8(b).unwrap()
+    //        );
+    //    }
+    //    Err(e) => {
+    //        println!("DoubleQuote no good: {}", e);
+    //    }
+    //};
 
-    let qstr1 = r#"openssl AND NOT author:"steve sosik""#;
-    match doublequoted(qstr1.as_bytes()) {
-        Ok((a, b)) => {
-            println!(
-                "THING A: {} B:{}",
-                str::from_utf8(a).unwrap(),
-                str::from_utf8(b).unwrap()
-            );
-        }
-        Err(e) => {
-            println!("Thing no good: {}", e);
-        }
-    };
-
-    let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE).unwrap();
-    let mut qp = QueryParser::new().unwrap();
-    let mut stem = Stem::new("en").unwrap();
-    qp.set_stemmer(&mut stem).unwrap();
-
-    let flags = FlagBoolean as i16
-        | FlagPhrase as i16
-        | FlagLovehate as i16
-        | FlagBooleanAnyCase as i16
-        | FlagWildcard as i16
-        | FlagPureNot as i16
-        | FlagPartial as i16
-        | FlagSpellingCorrection as i16;
+    //let qstr1 = r#"openssl AND NOT author:"steve sosik""#;
+    //match doublequoted(qstr1.as_bytes()) {
+    //    Ok((a, b)) => {
+    //        println!(
+    //            "THING A: {} B:{}",
+    //            str::from_utf8(a).unwrap(),
+    //            str::from_utf8(b).unwrap()
+    //        );
+    //    }
+    //    Err(e) => {
+    //        println!("Thing no good: {}", e);
+    //    }
+    //};
 
     // Combine queries
     //let mut query = qp
