@@ -285,10 +285,11 @@ fn parse_query(mut qstr: &str) -> Result<(), Report> {
     //query = query.add_right(XapianOp::OpAnd, &mut q).expect("not found");
 
     while qstr.len() > 0 {
-        println!("QSTR0: {}", qstr);
+        //println!("QSTR0: {}", qstr);
         match take_up_to_operator(qstr.as_bytes()) {
             Err(e) => {
-                eprintln!("Take up to operator error: '{}' in: '{}'", e, qstr);
+                //eprintln!("Take up to operator error: '{}' in: '{}'", e, qstr);
+                println!("Query: '{}'", qstr);
                 break;
             }
             Ok((remaining, current)) => {
@@ -297,21 +298,21 @@ fn parse_query(mut qstr: &str) -> Result<(), Report> {
             }
         };
 
-        println!("QSTR: {}", qstr);
+        //println!("QSTR: {}", qstr);
         match match_op(&qstr) {
             Ok((remaining, op)) => {
                 match op {
                     XapianOp::OpAndNot => {
-                        println!("Query: AND NOT {}", remaining)
+                        println!("Operator: AND NOT");
                     }
                     XapianOp::OpAnd => {
-                        println!("Query: AND {}", remaining)
+                        println!("Operator: AND");
                     }
                     XapianOp::OpXor => {
-                        println!("Query: XOR {}", remaining)
+                        println!("Operator: XOR");
                     }
                     XapianOp::OpOr => {
-                        println!("Query: OR {}", remaining)
+                        println!("Operator: OR");
                     }
                     _ => {
                         println!("UNSUPPORTED: {}", remaining)
@@ -324,8 +325,6 @@ fn parse_query(mut qstr: &str) -> Result<(), Report> {
                 break;
             }
         };
-
-        println!("QSTR: {}", qstr);
     }
 
     //let dblqtd = r#""openssl x509" AND vkms"#;
