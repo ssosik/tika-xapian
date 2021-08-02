@@ -149,7 +149,7 @@ fn main() -> Result<(), Report> {
 use nom::{
     bytes::complete::{is_not, tag_no_case, take_while1, take_while_m_n},
     character::complete::{alpha1, anychar, char},
-    combinator::map_res,
+    combinator::{map_res, value},
     error::{ErrorKind, ParseError},
     sequence::tuple,
     Err,
@@ -174,11 +174,45 @@ named!(
     delimited!(tag!(r#"""#), is_not(r#"""#), tag!(r#"""#))
 );
 
-fn nom_test() {
-    let qstr1 = r#"openssl AND NOT author:"steve sosik""#;
-    let qstr2 = r#"openssl AND vkms"#;
-    let qstr3 = r#""openssl x509" AND vkms"#;
+pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
+    alt((
+        value(&XapianOp::OpAnd, tag("AND")),
+        value(&XapianOp::OpAndNot, tag("AND NOT")),
+        value(&XapianOp::OpOr, tag("OR")),
+        value(&XapianOp::OpXor, tag("XOR")),
+    ))(input)
+}
 
+fn nom_test() {
+    let andedwords = r#"openssl AND vkms"#;
+    match doublequoted(andedwords.as_bytes()) {
+        Ok((a, b)) => {
+            println!(
+                "A: {} B:{}",
+                str::from_utf8(a).unwrap(),
+                str::from_utf8(b).unwrap()
+            );
+        }
+        Err(e) => {
+            println!("AndedWords no good: {}", e);
+        }
+    };
+
+    let dblqtd = r#""openssl x509" AND vkms"#;
+    match doublequoted(dblqtd.as_bytes()) {
+        Ok((a, b)) => {
+            println!(
+                "A: {} B:{}",
+                str::from_utf8(a).unwrap(),
+                str::from_utf8(b).unwrap()
+            );
+        }
+        Err(e) => {
+            println!("DoubleQuote no good: {}", e);
+        }
+    };
+
+    let qstr1 = r#"openssl AND NOT author:"steve sosik""#;
     match doublequoted(qstr1.as_bytes()) {
         Ok((a, b)) => {
             println!(
@@ -188,31 +222,7 @@ fn nom_test() {
             );
         }
         Err(e) => {
-            println!("First no good: {}", e);
-        }
-    };
-    match doublequoted(qstr2.as_bytes()) {
-        Ok((a, b)) => {
-            println!(
-                "A: {} B:{}",
-                str::from_utf8(a).unwrap(),
-                str::from_utf8(b).unwrap()
-            );
-        }
-        Err(e) => {
-            println!("Second no good: {}", e);
-        }
-    };
-    match doublequoted(qstr3.as_bytes()) {
-        Ok((a, b)) => {
-            println!(
-                "A: {} B:{}",
-                str::from_utf8(a).unwrap(),
-                str::from_utf8(b).unwrap()
-            );
-        }
-        Err(e) => {
-            println!("Third no good: {}", e);
+            println!("Thing no good: {}", e);
         }
     };
 
