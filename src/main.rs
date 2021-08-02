@@ -148,9 +148,10 @@ use nom::{
     bytes::complete::{is_not, tag_no_case, take_while1, take_while_m_n},
     character::complete::{alpha1, anychar, char},
     combinator::map_res,
-    error::ParseError,
+    error::{ParseError, ErrorKind},
     sequence::tuple,
-    {call, char, delimited, escaped, is_not, named, none_of, one_of, tag},
+    Err,
+    {call, char, delimited, escaped, is_not, named, none_of, one_of, tag, add_return_error, error_node_position, error_position},
 };
 
 use nom::{
@@ -179,12 +180,20 @@ fn parse_quoted(input: &str) -> IResult<&str, &str> {
     Ok(res)
 }
 
+named!(err_test, add_return_error!(ErrorKind::Tag, tag!("abcd")));
+
 fn nom_test() {
+
+    let a = &b"efghblah"[..];
+    let res_a = err_test(a);
+    assert_eq!(res_a, Err(Err::Error(error_node_position!(a, ErrorKind::Tag, error_position!(a, ErrorKind::Tag)))));
+    println!("Error: {:?}", res_a);
+
     let qstr1 = r#"openssl AND NOT author:"steve sosik""#;
     let qstr2 = r#"openssl AND vkms"#;
     let qstr3 = r#""openssl x509" AND vkms"#;
 
-    match quoted(qstr1.as_bytes()) {
+    match parens(qstr1.as_bytes()) {
         Ok((a, b)) => {
             println!(
                 "A: {} B:{}",
@@ -196,7 +205,7 @@ fn nom_test() {
             println!("First no good: {}", e);
         }
     };
-    match quoted(qstr2.as_bytes()) {
+    match parens(qstr2.as_bytes()) {
         Ok((a, b)) => {
             println!(
                 "A: {} B:{}",
@@ -208,7 +217,7 @@ fn nom_test() {
             println!("Second no good: {}", e);
         }
     };
-    match quoted(qstr3.as_bytes()) {
+    match parens(qstr3.as_bytes()) {
         Ok((a, b)) => {
             println!(
                 "A: {} B:{}",
