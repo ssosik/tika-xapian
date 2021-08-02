@@ -213,11 +213,14 @@ pub fn match_xtag(input: &str) -> IResult<&str, &XTag> {
 }
 
 pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
+    // From https://github.com/Geal/nom/blob/master/doc/choosing_a_combinator.md
+    // Note that case insensitive comparison is not well defined for unicode, 
+    // and that you might have bad surprises
     alt((
-        value(&XapianOp::OpAnd, tag("AND")),
-        value(&XapianOp::OpAndNot, tag("AND NOT")),
-        value(&XapianOp::OpOr, tag("OR")),
-        value(&XapianOp::OpXor, tag("XOR")),
+        value(&XapianOp::OpAnd, tag_no_case("AND")),
+        value(&XapianOp::OpAndNot, tag_no_case("AND NOT")),
+        value(&XapianOp::OpOr, tag_no_case("OR")),
+        value(&XapianOp::OpXor, tag_no_case("XOR")),
         // OpAndMaybe,
         // OpFilter,
         // OpNear,
@@ -287,31 +290,30 @@ fn nom_test() {
         }
     };
 
-    // From https://github.com/Geal/nom/blob/master/doc/choosing_a_combinator.md
-    // Note that case insensitive comparison is not well defined for unicode, and that you might have bad surprises
-    //let AND = tag_no_case("and");
-    //fn AND(s: &str) -> IResult<&str, &str> {
-    //    tag_no_case("AND")(s)
-    //}
+    let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE).unwrap();
+    let mut qp = QueryParser::new().unwrap();
+    let mut stem = Stem::new("en").unwrap();
+    qp.set_stemmer(&mut stem).unwrap();
 
-    //let (a, b ) = parens(qstr1.as_bytes()).unwrap();
-    //println!("Q1 {} {}", a.as_str(), b.as_str());
-    //let space = take_while1(|c| c == ' ');
-    //
-    //alt(tag("ab") | tag("cd"))
-    //
-    //alt(tag("ab") | tag("cd"))
+    let flags = FlagBoolean as i16
+        | FlagPhrase as i16
+        | FlagLovehate as i16
+        | FlagBooleanAnyCase as i16
+        | FlagWildcard as i16
+        | FlagPureNot as i16
+        | FlagPartial as i16
+        | FlagSpellingCorrection as i16;
 
-    //let phrase = delimited(char('"'), is_not(r#"""#), char('"'));
-    //if let Ok(o) = quoted(qstr1) {
-    //}
-    //let (o1, o2) = quoted(qstr2).unwrap();
-    //println!("Q2 {} {}", o1, o2);
+    // Combine queries
+    //let mut query = qp
+    //    .parse_query("a*", flags)
+    //    .expect("not found");
+    //let mut q = qp
+    //    .parse_query_with_prefix("work", flags, "K")
+    //    .expect("not found");
+    //query = query.add_right(XapianOp::OpAnd, &mut q).expect("not found");
+
 }
-
-//fn quoted<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &str, E> {
-//    delimited(char('"'), is_not(r#"""#), char('"'))(i)
-//}
 
 fn perform_index(
     db: &mut WritableDatabase,
