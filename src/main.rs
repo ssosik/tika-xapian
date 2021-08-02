@@ -138,7 +138,7 @@ fn main() -> Result<(), Report> {
         db.commit()?;
     }
 
-    //query()?;
+    //perform_query()?;
     //interactive_query()?;
 
     parse_query(r#"aaabcde c and not vkms"#)?;
@@ -271,6 +271,19 @@ fn parse_query(mut qstr: &str) -> Result<(), Report> {
         | FlagPartial as i16
         | FlagSpellingCorrection as i16;
 
+    // Accumulators, start them off as empty options
+    let query: Option<Query> = None;
+    let operator: Option<XapianOp> = None;
+
+    // Combine queries
+    //let mut query = qp
+    //    .parse_query("a*", flags)
+    //    .expect("not found");
+    //let mut q = qp
+    //    .parse_query_with_prefix("work", flags, "K")
+    //    .expect("not found");
+    //query = query.add_right(XapianOp::OpAnd, &mut q).expect("not found");
+
     while qstr.len() > 0 {
         println!("QSTR0: {}", qstr);
         match take_up_to_operator(qstr.as_bytes()) {
@@ -343,15 +356,6 @@ fn parse_query(mut qstr: &str) -> Result<(), Report> {
     //    }
     //};
 
-    // Combine queries
-    //let mut query = qp
-    //    .parse_query("a*", flags)
-    //    .expect("not found");
-    //let mut q = qp
-    //    .parse_query_with_prefix("work", flags, "K")
-    //    .expect("not found");
-    //query = query.add_right(XapianOp::OpAnd, &mut q).expect("not found");
-
     println!("Done");
     Ok(())
 }
@@ -388,7 +392,7 @@ fn perform_index(
 }
 
 #[allow(dead_code)]
-fn query() -> Result<(), Report> {
+fn perform_query() -> Result<(), Report> {
     let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
