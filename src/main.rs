@@ -155,7 +155,7 @@ use nom::{
     Err,
     {
         add_return_error, call, char, delimited, error_node_position, error_position, escaped,
-        is_not, named, none_of, one_of, tag,
+        is_not, named, none_of, one_of, tag, peek,
     },
 };
 
@@ -234,23 +234,43 @@ pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
     ))(input)
 }
 
+
+////pub fn match_query<'a, 'b>(qp: &'b QueryParser, input: &'a str) -> IResult<&'a str, &'a Query> {
+//pub fn match_query<'a, 'b>(qp: &'b QueryParser, input: &'a str) -> IResult<&'a str, &'a str> {
+//    let flags = FlagBoolean as i16
+//        | FlagPhrase as i16
+//        | FlagLovehate as i16
+//        | FlagBooleanAnyCase as i16
+//        | FlagWildcard as i16
+//        | FlagPureNot as i16
+//        | FlagPartial as i16
+//        | FlagSpellingCorrection as i16;
+//
+//    //let mut query = qp.parse_query("a*", flags).expect("not found");
+//    alt((
+//        value(&"foo", match_op),
+//    ))(input)
+//}
+
 fn nom_test() {
-    //let andedwords = r#"openssl AND vkms"#;
-    let andedwords = r#"XOR vkms"#;
+    let andedwords = r#"vault openssl AND vkms"#;
+    //let andedwords = r#"XOR vkms"#;
     match match_op(andedwords) {
         Ok((a, b)) => {
             match b {
-                XapianOp::OpAnd => {
-                    println!("AND: {}", a,)
-                }
+                // Order these by longest match, according to
+                // https://docs.rs/nom/6.2.1/nom/macro.alt.html#behaviour-of-alt
                 XapianOp::OpAndNot => {
                     println!("AND NOT: {}", a,)
                 }
-                XapianOp::OpOr => {
-                    println!("OR: {}", a,)
+                XapianOp::OpAnd => {
+                    println!("AND: {}", a,)
                 }
                 XapianOp::OpXor => {
                     println!("XOR: {}", a,)
+                }
+                XapianOp::OpOr => {
+                    println!("OR: {}", a,)
                 }
                 _ => {
                     println!("UNSUPPORTED: {}", a)
