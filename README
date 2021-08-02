@@ -47,3 +47,4 @@ DYLD_LIBRARY_PATH=xapian-core-1.4.17/.libs/ ./target/debug/xapian-rusty-test -i
 - unit tests
 - cleanups, refactoring, rust-analyze, clippy and linting
 - statically link xapian-core
+- fix all gratuitus allows and unused imports

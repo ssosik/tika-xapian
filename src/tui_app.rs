@@ -1,7 +1,10 @@
+//TODO Fix
 use crate::tika_document::TikaDocument;
-use color_eyre::Report;
+#[allow(unused_imports)]
 use std::{fs, io, io::Read, path::Path};
+#[allow(unused_imports)]
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+#[allow(unused_imports)]
 use tui::{
     backend::TermionBackend,
     layout::{Constraint, Direction, Layout},
