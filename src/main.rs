@@ -138,14 +138,14 @@ fn main() -> Result<(), Report> {
         db.commit()?;
     }
 
-    let q = parse_user_query(r#"aaabcde c AND NOT vkms"#)?;
+    //let q = parse_user_query(r#"aaabcde c AND NOT vkms"#)?;
     //let q = parse_user_query(r#"foobar AND NOT vkms"#)?;
     //let q = parse_user_query(r#"foobar AND vkms"#)?;
     //let q = parse_user_query(r#"openssl x509 and not vkms and not curl"#)?;
     //let q = parse_user_query(r#""#)?;
+    //perform_query(q)?;
 
-    perform_query(q)?;
-    //interactive_query()?;
+    interactive_query()?;
 
     Ok(())
 }
@@ -278,12 +278,12 @@ fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
     let mut operator: Option<&XapianOp> = None;
 
     while qstr.len() > 0 {
-        println!("Processing '{}'", qstr);
+        //println!("Processing '{}'", qstr);
 
         match take_up_to_operator(qstr.as_bytes()) {
             Err(e) => {
                 //eprintln!("Take up to operator error: '{}' in: '{}'", e, qstr);
-                println!("Break Query: '{}' {}", qstr, e);
+                //println!("Break Query: '{}' {}", qstr, e);
                 //break;
 
                 // TODO reduce duplication here, test that 'e' is expected Error
@@ -291,33 +291,33 @@ fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
                     let q = qp
                         .parse_query(qstr, flags)
                         .expect("No more operators: QueryParser error");
-                    println!("parsed query string '{}'", qstr);
+                    //println!("parsed query string '{}'", qstr);
                     query = Some(q);
                 } else {
                     let op = match operator {
                         Some(&XapianOp::OpAndNot) => {
-                            println!("No more operators: Use Operator And Not");
+                            //println!("No more operators: Use Operator And Not");
                             XapianOp::OpAndNot
                         }
                         Some(&XapianOp::OpAnd) => {
-                            println!("No more operators: Use Operator And");
+                            //println!("No more operators: Use Operator And");
                             XapianOp::OpAnd
                         }
                         Some(&XapianOp::OpXor) => {
-                            println!("No more operators: Use Operator Xor");
+                            //println!("No more operators: Use Operator Xor");
                             XapianOp::OpXor
                         }
                         Some(&XapianOp::OpOr) => {
-                            println!("No more operators: Use Operator Or");
+                            //println!("No more operators: Use Operator Or");
                             XapianOp::OpOr
                         }
                         _ => {
-                            eprintln!("No more operators: Found unsupported Xapian Operation");
+                            //eprintln!("No more operators: Found unsupported Xapian Operation");
                             XapianOp::OpAnd
                         }
                     };
 
-                    println!("No more operators: appended query string {}", qstr);
+                    //println!("No more operators: appended query string {}", qstr);
                     query = Some(
                         query
                             .unwrap()
@@ -328,30 +328,30 @@ fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
             }
             Ok((remaining, current)) => {
                 let curr_query = str::from_utf8(&current)?;
-                println!("Took Query up to operator: '{}'", curr_query);
+                //println!("Took Query up to operator: '{}'", curr_query);
                 qstr = str::from_utf8(&remaining)?;
                 if query.is_none() {
                     let q = qp
                         .parse_query(curr_query, flags)
                         .expect("QueryParser error");
-                    println!("parsed query string '{}'", curr_query);
+                    //println!("parsed query string '{}'", curr_query);
                     query = Some(q);
                 } else {
                     let op = match operator {
                         Some(&XapianOp::OpAndNot) => {
-                            println!("Use Operator And Not");
+                            //println!("Use Operator And Not");
                             XapianOp::OpAndNot
                         }
                         Some(&XapianOp::OpAnd) => {
-                            println!("Use Operator And");
+                            //println!("Use Operator And");
                             XapianOp::OpAnd
                         }
                         Some(&XapianOp::OpXor) => {
-                            println!("Use Operator Xor");
+                            //println!("Use Operator Xor");
                             XapianOp::OpXor
                         }
                         Some(&XapianOp::OpOr) => {
-                            println!("Use Operator Or");
+                            //println!("Use Operator Or");
                             XapianOp::OpOr
                         }
                         _ => {
@@ -360,7 +360,7 @@ fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
                         }
                     };
 
-                    println!("appended query string {}", curr_query);
+                    //println!("appended query string {}", curr_query);
                     query = Some(
                         query
                             .unwrap()
@@ -371,35 +371,35 @@ fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
             }
         };
 
-        println!("MATCH OP: {}", qstr);
+        //println!("MATCH OP: {}", qstr);
         match match_op(&qstr) {
             Ok((remaining, op)) => {
                 operator = match op {
                     XapianOp::OpAndNot => {
-                        println!("Set Operator And Not");
+                        //println!("Set Operator And Not");
                         Some(&XapianOp::OpAndNot)
                     }
                     XapianOp::OpAnd => {
-                        println!("Set Operator And");
+                        //println!("Set Operator And");
                         Some(&XapianOp::OpAnd)
                     }
                     XapianOp::OpXor => {
-                        println!("Set Operator Xor");
+                        //println!("Set Operator Xor");
                         Some(&XapianOp::OpXor)
                     }
                     XapianOp::OpOr => {
-                        println!("Set Operator Or");
+                        //println!("Set Operator Or");
                         Some(&XapianOp::OpOr)
                     }
                     _ => {
-                        eprintln!("Found unsupported Xapian Operation");
+                        //eprintln!("Found unsupported Xapian Operation");
                         Some(&XapianOp::OpAnd)
                     }
                 };
                 qstr = remaining
             }
             Err(e) => {
-                eprintln!("Match Op error: '{}' in '{}'", e, qstr);
+                //eprintln!("Match Op error: '{}' in '{}'", e, qstr);
                 break;
             }
         };
@@ -433,7 +433,7 @@ fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
     //    }
     //};
 
-    println!("Done");
+    //println!("Done");
     Ok(query.unwrap())
 }
 
@@ -633,7 +633,7 @@ fn interactive_query() -> Result<(), Report> {
             match input {
                 Key::Char('\n') => {
                     selected = app.get_selected();
-                    println!("DONE");
+                    //println!("DONE");
                     break;
                 }
                 Key::Ctrl('c') => {
@@ -655,10 +655,14 @@ fn interactive_query() -> Result<(), Report> {
             }
 
             let mut query = qp.parse_query(&app.input, flags).expect("not found");
+            let mut query = parse_user_query(&app.input)?;
+
             let mut enq = db.new_enquire()?;
             enq.set_query(&mut query)?;
             let mut mset = enq.get_mset(0, 100)?;
 
+            // TODO: extract the following code into one place
+            // perform_query(q)?;
             app.matches = Vec::new();
             let mut v = mset.iterator().unwrap();
             while v.is_next().unwrap() {
