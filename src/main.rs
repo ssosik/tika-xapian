@@ -138,12 +138,12 @@ fn main() -> Result<(), Report> {
         db.commit()?;
     }
 
+    parse_user_query(r#"aaabcde c AND NOT vkms"#)?;
+    //parse_user_query(r#"openssl x509 and not vkms and not curl"#)?;
+    //parse_user_query(r#""#)?;
+
     //perform_query()?;
     //interactive_query()?;
-
-    parse_query(r#"aaabcde c and not vkms"#)?;
-    parse_query(r#"openssl x509 and not vkms and not curl"#)?;
-    parse_query(r#""#)?;
 
     Ok(())
 }
@@ -257,7 +257,7 @@ named!(
     )
 );
 
-fn parse_query(mut qstr: &str) -> Result<(), Report> {
+fn parse_user_query(mut qstr: &str) -> Result<(), Report> {
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
     qp.set_stemmer(&mut stem)?;
@@ -272,8 +272,8 @@ fn parse_query(mut qstr: &str) -> Result<(), Report> {
         | FlagSpellingCorrection as i16;
 
     // Accumulators, start them off as empty options
-    let query: Option<Query> = None;
-    let operator: Option<XapianOp> = None;
+    let mut query: Option<Query> = None;
+    let operator: Option<&XapianOp> = None;
 
     // Combine queries
     //let mut query = qp
@@ -287,14 +287,37 @@ fn parse_query(mut qstr: &str) -> Result<(), Report> {
     while qstr.len() > 0 {
         //println!("QSTR0: {}", qstr);
         match take_up_to_operator(qstr.as_bytes()) {
-            Err(e) => {
+            Err(_) => {
                 //eprintln!("Take up to operator error: '{}' in: '{}'", e, qstr);
                 println!("Query: '{}'", qstr);
                 break;
             }
             Ok((remaining, current)) => {
-                println!("Query: '{}'", str::from_utf8(&current)?,);
+                let curr_query = str::from_utf8(&current)?;
+                println!("Query: '{}'", curr_query);
                 qstr = str::from_utf8(&remaining)?;
+                if query.is_none() {
+                    println!("About to parse query string {}", curr_query);
+                    let mut q = qp.parse_query(curr_query, flags).expect("QueryParser error");
+                    query = Some(q);
+                } else {
+                    let op = match operator {
+                        Some(&XapianOp::OpAndNot) => XapianOp::OpAndNot,
+                        Some(&XapianOp::OpAnd) => XapianOp::OpAnd,
+                        Some(&XapianOp::OpXor) => XapianOp::OpXor,
+                        Some(&XapianOp::OpOr) => XapianOp::OpOr,
+                        _ => {
+                            eprintln!("Found unsupported Xapian Operation");
+                            XapianOp::OpAnd
+                        }
+                    };
+                    query = Some(
+                        query
+                            .unwrap()
+                            .add_right(op, &mut qp.parse_query(qstr, flags)?)
+                            .expect("Failed to add_right()"),
+                    );
+                }
             }
         };
 
