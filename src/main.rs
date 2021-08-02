@@ -146,11 +146,11 @@ fn main() -> Result<(), Report> {
 
 use nom::{
     bytes::complete::{is_not, tag_no_case, take_while1, take_while_m_n},
-    character::complete::{alpha1, char, anychar},
+    character::complete::{alpha1, anychar, char},
     combinator::map_res,
     error::ParseError,
     sequence::tuple,
-    {char, delimited, is_not, named, tag, escaped, call, one_of, none_of},
+    {call, char, delimited, escaped, is_not, named, none_of, one_of, tag},
 };
 
 use nom::{
@@ -167,9 +167,9 @@ named!(
     delimited!(tag!(r#"""#), is_not(r#"""#), tag!(r#"""#))
 );
 
-//named!(esc, escaped!(call!(alpha1), '\\', one_of!("\"n\\")));
+//named!(esc, escaped!(call!(alpha1), '\\', one_of!("\"\n\'\\")));
 named!(esc, escaped!(call!(anychar), '\\', one_of!("\"\n\'\\")));
-
+named!(quoted, delimited!(tag!(r#"""#), alpha1, tag!(r#"""#)));
 
 fn parse_quoted(input: &str) -> IResult<&str, &str> {
     let esc = escaped(none_of("\\\'"), '\\', tag("'"));
@@ -184,17 +184,45 @@ fn nom_test() {
     let qstr2 = r#"openssl AND vkms"#;
     let qstr3 = r#""openssl x509" AND vkms"#;
 
-    let (a,b) = esc(qstr1.as_bytes()).unwrap();
-    println!("A: {} B:{}", str::from_utf8(a).unwrap(), str::from_utf8(b).unwrap());
-
-    let (a,b) = esc(qstr2.as_bytes()).unwrap();
-    println!("A: {} B:{}", str::from_utf8(a).unwrap(), str::from_utf8(b).unwrap());
-
-    let (a,b) = esc(qstr3.as_bytes()).unwrap();
-    println!("A: {} B:{}", str::from_utf8(a).unwrap(), str::from_utf8(b).unwrap());
+    match quoted(qstr1.as_bytes()) {
+        Ok((a, b)) => {
+            println!(
+                "A: {} B:{}",
+                str::from_utf8(a).unwrap(),
+                str::from_utf8(b).unwrap()
+            );
+        }
+        Err(e) => {
+            println!("First no good: {}", e);
+        }
+    };
+    match quoted(qstr2.as_bytes()) {
+        Ok((a, b)) => {
+            println!(
+                "A: {} B:{}",
+                str::from_utf8(a).unwrap(),
+                str::from_utf8(b).unwrap()
+            );
+        }
+        Err(e) => {
+            println!("Second no good: {}", e);
+        }
+    };
+    match quoted(qstr3.as_bytes()) {
+        Ok((a, b)) => {
+            println!(
+                "A: {} B:{}",
+                str::from_utf8(a).unwrap(),
+                str::from_utf8(b).unwrap()
+            );
+        }
+        Err(e) => {
+            println!("Third no good: {}", e);
+        }
+    };
 
     let (a, res) = parse_quoted(r#"'foo\' 🤖 bar'"#).unwrap();
-    println!("A: {} {}", a, res);
+    println!("A: {} B: {}", a, res);
     assert_eq!(res, r#"foo\' 🤖 bar"#);
     let (_, res) = parse_quoted("'λx → x'").unwrap();
     assert_eq!(res, "λx → x");
