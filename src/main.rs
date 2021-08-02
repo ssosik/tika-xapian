@@ -141,7 +141,8 @@ fn main() -> Result<(), Report> {
     //query()?;
     //interactive_query()?;
 
-    parse_query(r#"aaabcde c AND NOT vkms"#)?;
+    parse_query(r#"aaabcde c and not vkms"#)?;
+    parse_query(r#"openssl x509 and not vkms and not curl"#)?;
     parse_query(r#""#)?;
 
     Ok(())
@@ -241,13 +242,18 @@ pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
     ))(input)
 }
 
+// TODO is there a better way to handle case insensitity here?
 named!(
     take_up_to_operator,
     alt!(
         complete!(take_until!("AND NOT"))
+            | complete!(take_until!("and not"))
             | complete!(take_until!("AND"))
+            | complete!(take_until!("and"))
             | complete!(take_until!("XOR"))
+            | complete!(take_until!("xor"))
             | complete!(take_until!("OR"))
+            | complete!(take_until!("or"))
     )
 );
 
@@ -265,47 +271,49 @@ fn parse_query(mut qstr: &str) -> Result<(), Report> {
         | FlagPartial as i16
         | FlagSpellingCorrection as i16;
 
-    //while qstr.len() > 0 {
-    match take_up_to_operator(qstr.as_bytes()) {
-        Err(e) => {
-            println!("Matcher error: '{}' in: '{}'", e, qstr);
-            //break;
-        }
-        Ok((remaining, current)) => {
-            println!("Query: '{}'", str::from_utf8(&current)?,);
-            qstr = str::from_utf8(&remaining)?;
-        }
-    };
+    while qstr.len() > 0 {
+        println!("QSTR0: {}", qstr);
+        match take_up_to_operator(qstr.as_bytes()) {
+            Err(e) => {
+                eprintln!("Take up to operator error: '{}' in: '{}'", e, qstr);
+                break;
+            }
+            Ok((remaining, current)) => {
+                println!("Query: '{}'", str::from_utf8(&current)?,);
+                qstr = str::from_utf8(&remaining)?;
+            }
+        };
 
-    println!("QSTR: {}", qstr);
-    match match_op(&qstr) {
-        Ok((remaining, op)) => {
-            match op {
-                XapianOp::OpAndNot => {
-                    println!("AND NOT: {}", remaining)
-                }
-                XapianOp::OpAnd => {
-                    println!("AND: {}", remaining)
-                }
-                XapianOp::OpXor => {
-                    println!("XOR: {}", remaining)
-                }
-                XapianOp::OpOr => {
-                    println!("OR: {}", remaining)
-                }
-                _ => {
-                    println!("UNSUPPORTED: {}", remaining)
-                }
-            };
-        }
-        Err(e) => {
-            println!("AndedWords no good: {}", e);
-        }
-    };
+        println!("QSTR: {}", qstr);
+        match match_op(&qstr) {
+            Ok((remaining, op)) => {
+                match op {
+                    XapianOp::OpAndNot => {
+                        println!("Query: AND NOT {}", remaining)
+                    }
+                    XapianOp::OpAnd => {
+                        println!("Query: AND {}", remaining)
+                    }
+                    XapianOp::OpXor => {
+                        println!("Query: XOR {}", remaining)
+                    }
+                    XapianOp::OpOr => {
+                        println!("Query: OR {}", remaining)
+                    }
+                    _ => {
+                        println!("UNSUPPORTED: {}", remaining)
+                    }
+                };
+                qstr = remaining
+            }
+            Err(e) => {
+                eprintln!("Match Op error: '{}' in '{}'", e, qstr);
+                break;
+            }
+        };
 
-    println!("QSTR: {}", qstr);
-
-    //}
+        println!("QSTR: {}", qstr);
+    }
 
     //let dblqtd = r#""openssl x509" AND vkms"#;
     //match doublequoted(dblqtd.as_bytes()) {
@@ -344,6 +352,7 @@ fn parse_query(mut qstr: &str) -> Result<(), Report> {
     //    .expect("not found");
     //query = query.add_right(XapianOp::OpAnd, &mut q).expect("not found");
 
+    println!("Done");
     Ok(())
 }
 
