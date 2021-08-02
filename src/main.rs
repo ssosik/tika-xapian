@@ -145,7 +145,9 @@ fn main() -> Result<(), Report> {
     //let q = parse_user_query(r#""#)?;
     //perform_query(q)?;
 
-    interactive_query()?;
+    let result = interactive_query();
+       println!("Result: {:?}", result);
+    println!("DONE");
 
     Ok(())
 }
@@ -681,6 +683,8 @@ fn interactive_query() -> Result<(), Report> {
     for sel in selected {
         println!("{}", sel);
     }
+
+        terminal.clear().unwrap();
 
     Ok(())
 }
