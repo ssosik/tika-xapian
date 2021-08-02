@@ -138,10 +138,80 @@ fn main() -> Result<(), Report> {
     }
 
     //query()?;
-    interactive_query()?;
+    //interactive_query()?;
+    nom_test();
 
     Ok(())
 }
+
+use nom::{
+    bytes::complete::{is_not, tag_no_case, take_while1, take_while_m_n},
+    character::complete::{alpha1, char},
+    combinator::map_res,
+    error::ParseError,
+    sequence::tuple,
+    {char, delimited, is_not, named, tag},
+};
+
+use nom::{
+    branch::alt,
+    bytes::complete::{escaped, tag},
+    character::complete::none_of,
+    sequence::delimited,
+    IResult,
+};
+
+named!(
+    parens,
+    delimited!(tag!(r#"""#), is_not(r#"""#), tag!(r#"""#))
+);
+
+fn parse_quoted(input: &str) -> IResult<&str, &str> {
+    let esc = escaped(none_of("\\\'"), '\\', tag("'"));
+    let esc_or_empty = alt((esc, tag("")));
+    let res = delimited(tag("'"), esc_or_empty, tag("'"))(input)?;
+
+    Ok(res)
+}
+
+fn nom_test() {
+    let qstr1 = r#"openssl AND NOT author:"steve sosik""#;
+    let qstr2 = r#"openssl AND vkms"#;
+
+    let (a, res) = parse_quoted(r#"'foo\' 🤖 bar'"#).unwrap();
+    println!("A: {} {}", a, res);
+    assert_eq!(res, r#"foo\' 🤖 bar"#);
+    let (_, res) = parse_quoted("'λx → x'").unwrap();
+    assert_eq!(res, "λx → x");
+    let (_, res) = parse_quoted("'  '").unwrap();
+    assert_eq!(res, "  ");
+    let (_, res) = parse_quoted("''").unwrap();
+    assert_eq!(res, "");
+    // From https://github.com/Geal/nom/blob/master/doc/choosing_a_combinator.md
+    // Note that case insensitive comparison is not well defined for unicode, and that you might have bad surprises
+    //let AND = tag_no_case("and");
+    //fn AND(s: &str) -> IResult<&str, &str> {
+    //    tag_no_case("AND")(s)
+    //}
+
+    //let (a, b ) = parens(qstr1.as_bytes()).unwrap();
+    //println!("Q1 {} {}", a.as_str(), b.as_str());
+    //let space = take_while1(|c| c == ' ');
+    //
+    //alt(tag("ab") | tag("cd"))
+    //
+    //alt(tag("ab") | tag("cd"))
+
+    //let phrase = delimited(char('"'), is_not(r#"""#), char('"'));
+    //if let Ok(o) = quoted(qstr1) {
+    //}
+    //let (o1, o2) = quoted(qstr2).unwrap();
+    //println!("Q2 {} {}", o1, o2);
+}
+
+//fn quoted<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &str, E> {
+//    delimited(char('"'), is_not(r#"""#), char('"'))(i)
+//}
 
 fn perform_index(
     db: &mut WritableDatabase,
