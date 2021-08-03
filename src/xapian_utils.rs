@@ -13,7 +13,7 @@ use xapian_rusty::FeatureFlag::{
 use xapian_rusty::{Database, Query, QueryParser, Stem, XapianOp, DB_CREATE_OR_OVERWRITE};
 
 // Xapian tags in human format, e.g. "author;" or "title:"
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum XapianTag {
     Author,
     Date,
@@ -25,20 +25,31 @@ pub enum XapianTag {
 }
 
 impl XapianTag {
-    fn to_xapian<'a>(self) -> &'a [u8] {
+    //fn to_xapian<'a>(self) -> &'a [u8] {
+    //    match self {
+    //        XapianTag::Author => "A".as_bytes(),
+    //        XapianTag::Date => "D".as_bytes(),
+    //        XapianTag::Filename => "F".as_bytes(),
+    //        XapianTag::Fullpath => "F".as_bytes(),
+    //        XapianTag::Title => "S".as_bytes(),
+    //        XapianTag::Subtitle => "XS".as_bytes(),
+    //        XapianTag::Tag => "K".as_bytes(),
+    //    }
+    //}
+    fn to_xapian<'a>(self) -> &'a str {
         match self {
-            XapianTag::Author => "A".as_bytes(),
-            XapianTag::Date => "D".as_bytes(),
-            XapianTag::Filename => "F".as_bytes(),
-            XapianTag::Fullpath => "F".as_bytes(),
-            XapianTag::Title => "S".as_bytes(),
-            XapianTag::Subtitle => "XS".as_bytes(),
-            XapianTag::Tag => "K".as_bytes(),
+            XapianTag::Author => "A",
+            XapianTag::Date => "D",
+            XapianTag::Filename => "F",
+            XapianTag::Fullpath => "F",
+            XapianTag::Title => "S",
+            XapianTag::Subtitle => "XS",
+            XapianTag::Tag => "K",
         }
     }
 }
 
-pub fn match_xtag(input: &str) -> IResult<&str, &XapianTag> {
+pub fn match_xapiantag(input: &str) -> IResult<&str, &XapianTag> {
     alt((
         value(&XapianTag::Author, tag("author:")),
         value(&XapianTag::Date, tag("date:")),
@@ -206,11 +217,6 @@ named!(
 );
 
 pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
-    //let res = operator_expr(qstr.as_bytes());
-    //match res {
-    //    Ok((a,b)) => println!("Operator a:'{}' b:'{}'", str::from_utf8(b).unwrap(), str::from_utf8(a).unwrap()),
-    //    Err(e) => println!("error '{}'", e)
-    //};
     if let Ok((a, b)) = doublequoted(qstr.as_bytes()) {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
@@ -219,8 +225,8 @@ pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
         println!("TagDoubleQuoted a:'{}' b:'{}'", a, b);
-        if let Ok((s, tag)) = match_xtag(b) {
-            println!("Tag :'{:?}' {}", tag, s);
+        if let Ok((s, tag)) = match_xapiantag(b) {
+            println!("Tag: {} {}", tag.to_xapian(), s);
         } else {
             println!("NoTag");
         }
@@ -232,8 +238,8 @@ pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
         println!("TagWord a:'{}' b:'{}'", b, a);
-        if let Ok((s, tag)) = match_xtag(b) {
-            println!("Tag :'{:?}' {}", tag, s);
+        if let Ok((s, tag)) = match_xapiantag(b) {
+            println!("Tag: {} {}", tag.to_xapian(), s);
         } else {
             println!("NoTag");
         }
