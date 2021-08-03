@@ -470,28 +470,33 @@ fn perform_index(
     Ok(())
 }
 
-fn perform_query(mut q: Query) -> Result<(), Report> {
+//fn perform_query(mut db: Database, mut q: Query) -> Result<Vec<TikaDocument>, Report> {
+fn perform_query(mut q: Query) -> Result<Vec<TikaDocument>, Report> {
+    // TODO Reuse existing DB instead of creating a new one on each query
     let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
-
     let mut enq = db.new_enquire()?;
     enq.set_query(&mut q)?;
+    // TODO set this based on terminal height?
     let mut mset = enq.get_mset(0, 100)?;
-    let appx_matches = mset.get_matches_estimated()?;
-    println!("Approximate Matches {}", appx_matches);
 
+    // TODO with verbose logging log this:
+    //let appx_matches = mset.get_matches_estimated()?;
+    //println!("Approximate Matches {}", appx_matches);
+
+    let mut matches = Vec::new();
     let mut v = mset.iterator().unwrap();
     while v.is_next().unwrap() {
         let res = v.get_document_data();
+        // Can use flatten() or some other iterators/combinators?
         if let Ok(data) = res {
             let v: TikaDocument = serde_json::from_str(&data)?;
-            println!("Match {}", v.filename);
-        } else {
-            eprintln!("No Matches");
+            //println!("Match {}", v.filename);
+            matches.push(v);
         }
         v.next()?;
     }
 
-    Ok(())
+    Ok(matches)
 }
 
 #[allow(dead_code)]
@@ -561,7 +566,7 @@ use tui::{
 /// Interactive query interface
 #[allow(dead_code)]
 fn interactive_query() -> Result<(), Report> {
-    let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
+    //let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
     qp.set_stemmer(&mut stem)?;
@@ -655,27 +660,9 @@ fn interactive_query() -> Result<(), Report> {
                 _ => {}
             }
 
-            let mut query = qp.parse_query(&app.input, flags).expect("not found");
-            let mut query = parse_user_query(&app.input)?;
-
-            let mut enq = db.new_enquire()?;
-            enq.set_query(&mut query)?;
-            let mut mset = enq.get_mset(0, 100)?;
-
-            // TODO: extract the following code into one place
-            // perform_query(q)?;
-            app.matches = Vec::new();
-            let mut v = mset.iterator().unwrap();
-            while v.is_next().unwrap() {
-                let res = v.get_document_data();
-                if let Ok(data) = res {
-                    let v: TikaDocument = serde_json::from_str(&data)?;
-                    app.matches.push(v);
-                } else {
-                    eprintln!("No Matches");
-                }
-                v.next()?;
-            }
+            let query = parse_user_query(&app.input)?;
+            //app.matches = perform_query(db, query)?;
+            app.matches = perform_query(query)?;
         }
     }
 
