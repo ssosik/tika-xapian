@@ -145,9 +145,12 @@ fn main() -> Result<(), Report> {
     //let q = parse_user_query(r#""#)?;
     //perform_query(q)?;
 
-    let result = interactive_query();
-    println!("Result: {:?}", result);
-    println!("DONE");
+    //let result = interactive_query();
+    let mut iter = IntoIterator::into_iter(interactive_query()?); // strings is moved here
+    while let Some(s) = iter.next() {
+        // next() moves a string out of the iter
+        println!("{}", s);
+    }
 
     Ok(())
 }
