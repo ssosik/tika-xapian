@@ -12,11 +12,6 @@ use xapian_rusty::FeatureFlag::{
 };
 use xapian_rusty::{Database, Query, QueryParser, Stem, XapianOp, DB_CREATE_OR_OVERWRITE};
 
-named!(
-    doublequoted,
-    delimited!(tag!(r#"""#), is_not(r#"""#), tag!(r#"""#))
-);
-
 // Xapian tags in human format, e.g. "author;" or "title:"
 #[derive(Debug)]
 pub enum XapianTag {
@@ -171,6 +166,80 @@ named!(
 //    }
 //}
 
+use nom::recognize;
+use nom::tuple;
+use nom::is_not;
+
+named!(
+    doublequoted,
+    recognize!(delimited!(tag!(r#"""#), is_not(r#"""#), tag!(r#"""#)))
+);
+
+named!(
+    tagdoublequoted,
+    recognize!(tuple!(is_not!(r#" :""#), tag!(r#":"#), tag!(r#"""#), is_not!(r#"""#), tag!(r#"""#)))
+);
+
+named!(
+    tagword,
+    recognize!(tuple!(is_not!(r#" :""#), tag!(r#":"#), is_not!(r#" "#)))
+);
+
+named!(
+    operator_expr,
+    recognize!(alt!(
+        complete!(take_until!("AND NOT"))
+            | complete!(take_until!("and not"))
+            | complete!(take_until!("AND"))
+            | complete!(take_until!("and"))
+            | complete!(take_until!("XOR"))
+            | complete!(take_until!("xor"))
+            | complete!(take_until!("OR"))
+            | complete!(take_until!("or"))
+    ))
+);
+
+pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
+    //let res = operator_expr(qstr.as_bytes());
+    //match res {
+    //    Ok((a,b)) => println!("Operator a:'{}' b:'{}'", str::from_utf8(b).unwrap(), str::from_utf8(a).unwrap()),
+    //    Err(e) => println!("error '{}'", e)
+    //};
+    if let Ok((a, b)) = operator_expr(qstr.as_bytes()) {
+        println!(
+            "Operator a:'{}' b:'{}'",
+            str::from_utf8(b).unwrap(),
+            str::from_utf8(a).unwrap()
+        );
+
+    } else if let Ok((a, b)) = tagdoublequoted(qstr.as_bytes()) {
+        println!(
+            "TagDoubleQuoted a:'{}' b:'{}'",
+            str::from_utf8(b).unwrap(),
+            str::from_utf8(a).unwrap()
+        );
+
+    } else if let Ok((a, b)) = tagword(qstr.as_bytes()) {
+        println!(
+            "TagWord a:'{}' b:'{}'",
+            str::from_utf8(b).unwrap(),
+            str::from_utf8(a).unwrap()
+        );
+
+    } else if let Ok((a, b)) = doublequoted(qstr.as_bytes()) {
+        println!(
+            "DoubleQuoted a:'{}' b:'{}'",
+            str::from_utf8(b).unwrap(),
+            str::from_utf8(a).unwrap()
+        );
+
+    } else {
+        println!("Bare expr:'{}'", qstr);
+    };
+
+    Ok(())
+}
+
 pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
@@ -317,6 +386,11 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
             }
         };
     }
+
+    //named!(
+    //    doublequoted,
+    //    delimited!(tag!(r#"""#), is_not(r#"""#), tag!(r#"""#))
+    //);
 
     //let dblqtd = r#""openssl x509" AND vkms"#;
     //match doublequoted(dblqtd.as_bytes()) {
