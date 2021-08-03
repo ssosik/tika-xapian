@@ -551,7 +551,7 @@ use tui::{
 
 /// Interactive query interface
 #[allow(dead_code)]
-fn interactive_query() -> Result<(), Report> {
+fn interactive_query() -> Result<Vec<String>, Report> {
     //let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
@@ -652,13 +652,9 @@ fn interactive_query() -> Result<(), Report> {
         }
     }
 
-    for sel in selected {
-        println!("{}", sel);
-    }
-
     tui.clear().unwrap();
 
-    Ok(())
+    Ok(selected)
 }
 
 fn setup_panic() {
