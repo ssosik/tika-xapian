@@ -3,7 +3,7 @@ use color_eyre::Report;
 use nom::{
     bytes::complete::{is_not, tag, tag_no_case},
     combinator::value,
-    {alt, branch::alt, complete, delimited, named, tag, take_until, IResult},
+    {alt, branch::alt, complete, delimited, named, tag, take_until, value, IResult},
 };
 use std::str;
 use xapian_rusty::FeatureFlag::{
@@ -49,6 +49,19 @@ pub fn match_xapiantag(input: &str) -> IResult<&str, &XapianTag> {
         value(&XapianTag::Tag, tag("tag:")),
     ))(input)
 }
+
+named!(
+    match_xapiantag2,
+    recognize!(alt!(
+            value!(XapianTag::Author, tag!("author:")) |
+            value!(XapianTag::Date, tag!("date:")) |
+            value!(XapianTag::Filename, tag!("filename:")) |
+            value!(XapianTag::Fullpath, tag!("fullpath:")) |
+            value!(XapianTag::Title, tag!("title:")) |
+            value!(XapianTag::Subtitle, tag!("subtitle:")) |
+            value!(XapianTag::Tag, tag!("tag:"))
+    ))
+);
 
 pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
     // Note 1:
@@ -214,8 +227,10 @@ pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
         println!("TagDoubleQuoted a:'{}' b:'{}'", a, b);
-        if let Ok((s, tag)) = match_xapiantag(b) {
-            println!("Tag: {} {}", tag.to_xapian(), s);
+        if let Ok((s, tag)) = match_xapiantag2(b.as_bytes()) {
+        let s = str::from_utf8(s).unwrap();
+        let tag = str::from_utf8(tag).unwrap();
+            println!("Tag: {} {}", tag, s);
         } else {
             println!("NoTag");
         }
@@ -223,6 +238,11 @@ pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
         println!("Operator a:'{}' b:'{}'", b, a);
+        //if let Ok((s, op)) = match_op(b) {
+        //    println!("Operator: {} {}", op as i32, s);
+        //} else {
+        //    println!("NoOperator");
+        //}
     } else if let Ok((a, b)) = tagword(qstr.as_bytes()) {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
