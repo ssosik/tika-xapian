@@ -166,9 +166,9 @@ named!(
 //    }
 //}
 
+use nom::is_not;
 use nom::recognize;
 use nom::tuple;
-use nom::is_not;
 
 named!(
     doublequoted,
@@ -177,7 +177,13 @@ named!(
 
 named!(
     tagdoublequoted,
-    recognize!(tuple!(is_not!(r#" :""#), tag!(r#":"#), tag!(r#"""#), is_not!(r#"""#), tag!(r#"""#)))
+    recognize!(tuple!(
+        is_not!(r#" :""#),
+        tag!(r#":"#),
+        tag!(r#"""#),
+        is_not!(r#"""#),
+        tag!(r#"""#)
+    ))
 );
 
 named!(
@@ -205,34 +211,32 @@ pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
     //    Ok((a,b)) => println!("Operator a:'{}' b:'{}'", str::from_utf8(b).unwrap(), str::from_utf8(a).unwrap()),
     //    Err(e) => println!("error '{}'", e)
     //};
-    if let Ok((a, b)) = operator_expr(qstr.as_bytes()) {
-        println!(
-            "Operator a:'{}' b:'{}'",
-            str::from_utf8(b).unwrap(),
-            str::from_utf8(a).unwrap()
-        );
-
+    if let Ok((a, b)) = doublequoted(qstr.as_bytes()) {
+        let a = str::from_utf8(a).unwrap();
+        let b = str::from_utf8(b).unwrap();
+        println!("DoubleQuoted a:'{}' b:'{}'", b, a);
     } else if let Ok((a, b)) = tagdoublequoted(qstr.as_bytes()) {
-        println!(
-            "TagDoubleQuoted a:'{}' b:'{}'",
-            str::from_utf8(b).unwrap(),
-            str::from_utf8(a).unwrap()
-        );
-
+        let a = str::from_utf8(a).unwrap();
+        let b = str::from_utf8(b).unwrap();
+        println!("TagDoubleQuoted a:'{}' b:'{}'", a, b);
+        if let Ok((s, tag)) = match_xtag(b) {
+            println!("Tag :'{:?}' {}", tag, s);
+        } else {
+            println!("NoTag");
+        }
+    } else if let Ok((a, b)) = operator_expr(qstr.as_bytes()) {
+        let a = str::from_utf8(a).unwrap();
+        let b = str::from_utf8(b).unwrap();
+        println!("Operator a:'{}' b:'{}'", b, a);
     } else if let Ok((a, b)) = tagword(qstr.as_bytes()) {
-        println!(
-            "TagWord a:'{}' b:'{}'",
-            str::from_utf8(b).unwrap(),
-            str::from_utf8(a).unwrap()
-        );
-
-    } else if let Ok((a, b)) = doublequoted(qstr.as_bytes()) {
-        println!(
-            "DoubleQuoted a:'{}' b:'{}'",
-            str::from_utf8(b).unwrap(),
-            str::from_utf8(a).unwrap()
-        );
-
+        let a = str::from_utf8(a).unwrap();
+        let b = str::from_utf8(b).unwrap();
+        println!("TagWord a:'{}' b:'{}'", b, a);
+        if let Ok((s, tag)) = match_xtag(b) {
+            println!("Tag :'{:?}' {}", tag, s);
+        } else {
+            println!("NoTag");
+        }
     } else {
         println!("Bare expr:'{}'", qstr);
     };
