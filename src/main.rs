@@ -283,7 +283,7 @@ fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
         //println!("Processing '{}'", qstr);
 
         match take_up_to_operator(qstr.as_bytes()) {
-            Err(e) => {
+            Err(_) => {
                 //eprintln!("Take up to operator error: '{}' in: '{}'", e, qstr);
                 //println!("Break Query: '{}' {}", qstr, e);
                 //break;
@@ -400,7 +400,7 @@ fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
                 };
                 qstr = remaining
             }
-            Err(e) => {
+            Err(_) => {
                 //eprintln!("Match Op error: '{}' in '{}'", e, qstr);
                 break;
             }
@@ -551,8 +551,8 @@ fn perform_query_canned() -> Result<(), Report> {
 }
 
 // TODO Move as much of this as possible out into tui_app.rs
-use std::io;
-use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use std::io::{Write, stdout};
+use termion::{event::Key, raw::IntoRawMode, screen::AlternateScreen};
 #[allow(unused_imports)]
 use tui::{
     backend::TermionBackend,
@@ -571,21 +571,21 @@ fn interactive_query() -> Result<(), Report> {
     let mut stem = Stem::new("en")?;
     qp.set_stemmer(&mut stem)?;
 
-    let flags = FlagBoolean as i16
-        | FlagPhrase as i16
-        | FlagLovehate as i16
-        | FlagBooleanAnyCase as i16
-        | FlagWildcard as i16
-        | FlagPureNot as i16
-        | FlagPartial as i16
-        | FlagSpellingCorrection as i16;
+    //let flags = FlagBoolean as i16
+    //    | FlagPhrase as i16
+    //    | FlagLovehate as i16
+    //    | FlagBooleanAnyCase as i16
+    //    | FlagWildcard as i16
+    //    | FlagPureNot as i16
+    //    | FlagPartial as i16
+    //    | FlagSpellingCorrection as i16;
 
     let mut selected: Vec<String> = Vec::new();
 
     setup_panic();
 
     let mut tui = tui::Terminal::new(TermionBackend::new(AlternateScreen::from(
-        std::io::stdout().into_raw_mode().unwrap(),
+        stdout().into_raw_mode().unwrap(),
     )))
     .unwrap();
 
@@ -675,20 +675,19 @@ fn interactive_query() -> Result<(), Report> {
     Ok(())
 }
 
-use std::io::Write;
 fn setup_panic() {
     std::panic::set_hook(Box::new(move |x| {
-        std::io::stdout()
+        stdout()
             .into_raw_mode()
             .unwrap()
             .suspend_raw_mode()
             .unwrap();
         write!(
-            std::io::stdout().into_raw_mode().unwrap(),
+            stdout().into_raw_mode().unwrap(),
             "{}",
             termion::screen::ToMainScreen
         )
         .unwrap();
-        write!(std::io::stdout(), "{:?}", x).unwrap();
+        write!(stdout(), "{:?}", x).unwrap();
     }));
 }
