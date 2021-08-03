@@ -146,7 +146,7 @@ fn main() -> Result<(), Report> {
     //perform_query(q)?;
 
     let result = interactive_query();
-       println!("Result: {:?}", result);
+    println!("Result: {:?}", result);
     println!("DONE");
 
     Ok(())
@@ -577,13 +577,12 @@ fn interactive_query() -> Result<(), Report> {
 
     let mut selected: Vec<String> = Vec::new();
 
-    //let mut terminal = tui_app::NewTerminal()?;
-    // Terminal initialization
-    let stdout = io::stdout().into_raw_mode()?;
-    let stdout = MouseTerminal::from(stdout);
-    let stdout = AlternateScreen::from(stdout);
-    let backend = TermionBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    setup_panic();
+
+    let mut tui = tui::Terminal::new(TermionBackend::new(AlternateScreen::from(
+        std::io::stdout().into_raw_mode().unwrap(),
+    )))
+    .unwrap();
 
     // Setup event handlers
     let events = Events::new();
@@ -593,7 +592,7 @@ fn interactive_query() -> Result<(), Report> {
 
     loop {
         // Draw UI
-        terminal.draw(|f| {
+        tui.draw(|f| {
             let panes = Layout::default()
                 .direction(Direction::Vertical)
                 .margin(1)
@@ -684,7 +683,25 @@ fn interactive_query() -> Result<(), Report> {
         println!("{}", sel);
     }
 
-        terminal.clear().unwrap();
+    tui.clear().unwrap();
 
     Ok(())
+}
+
+use std::io::Write;
+fn setup_panic() {
+    std::panic::set_hook(Box::new(move |x| {
+        std::io::stdout()
+            .into_raw_mode()
+            .unwrap()
+            .suspend_raw_mode()
+            .unwrap();
+        write!(
+            std::io::stdout().into_raw_mode().unwrap(),
+            "{}",
+            termion::screen::ToMainScreen
+        )
+        .unwrap();
+        write!(std::io::stdout(), "{:?}", x).unwrap();
+    }));
 }
