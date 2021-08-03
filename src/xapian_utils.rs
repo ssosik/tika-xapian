@@ -25,17 +25,6 @@ pub enum XapianTag {
 }
 
 impl XapianTag {
-    //fn to_xapian<'a>(self) -> &'a [u8] {
-    //    match self {
-    //        XapianTag::Author => "A".as_bytes(),
-    //        XapianTag::Date => "D".as_bytes(),
-    //        XapianTag::Filename => "F".as_bytes(),
-    //        XapianTag::Fullpath => "F".as_bytes(),
-    //        XapianTag::Title => "S".as_bytes(),
-    //        XapianTag::Subtitle => "XS".as_bytes(),
-    //        XapianTag::Tag => "K".as_bytes(),
-    //    }
-    //}
     fn to_xapian<'a>(self) -> &'a str {
         match self {
             XapianTag::Author => "A",
