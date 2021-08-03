@@ -96,6 +96,81 @@ named!(
     )
 );
 
+//struct QueryParseState {
+//    query: Option<Query>,
+//    operator: Option<i32>,
+//}
+//
+//impl QueryParseState {
+//    fn new<'a>() -> &'a QueryParseState {
+//        &QueryParseState {
+//            query: None,
+//            operator: None,
+//        }
+//    }
+//
+//    fn operator(self) -> XapianOp {
+//        return match self.operator {
+//            x if x.unwrap() == XapianOp::OpAnd as i32 => XapianOp::OpAnd,
+//            x if x.unwrap() == XapianOp::OpAndNot as i32 => XapianOp::OpAndNot,
+//            x if x.unwrap() == XapianOp::OpXor as i32 => XapianOp::OpXor,
+//            x if x.unwrap() == XapianOp::OpOr as i32 => XapianOp::OpOr,
+//            _ => unreachable!(),
+//        };
+//    }
+//
+//    fn update_query<'a>(
+//        mut self,
+//        mut qp: QueryParser,
+//        flags: i16,
+//        qstr: &str,
+//    ) -> Result<QueryParseState, Report> {
+//        if self.query.is_none() {
+//            self.query = Some(
+//                qp.parse_query(qstr, flags)
+//                    .expect("No more operators: QueryParser error"),
+//            );
+//        } else {
+//            self.query = Some(
+//                self.query
+//                    .unwrap()
+//                    .add_right(self.operator(), &mut qp.parse_query(qstr, flags)?)
+//                    .expect("No more operators: Failed to add_right()"),
+//            );
+//        }
+//        return Ok(self);
+//    }
+//
+//    fn update_operator<'a>(
+//        mut self,
+//        qp: QueryParser,
+//        operator: XapianOp,
+//    ) -> Result<QueryParseState, Report> {
+//        self.operator = match operator {
+//            XapianOp::OpAndNot => {
+//                //println!("No more operators: Use Operator And Not");
+//                Some(XapianOp::OpAndNot as i32)
+//            }
+//            XapianOp::OpAnd => {
+//                //println!("No more operators: Use Operator And");
+//                Some(XapianOp::OpAnd as i32)
+//            }
+//            XapianOp::OpXor => {
+//                //println!("No more operators: Use Operator Xor");
+//                Some(XapianOp::OpXor as i32)
+//            }
+//            XapianOp::OpOr => {
+//                //println!("No more operators: Use Operator Or");
+//                Some(XapianOp::OpOr as i32)
+//            }
+//            _ => {
+//                panic!("No more operators: Found unsupported Xapian Operation");
+//            }
+//        };
+//        return Ok(self);
+//    }
+//}
+
 pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
@@ -113,11 +188,55 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
     // Accumulators, start them off as empty options
     let mut query: Option<Query> = None;
     let mut operator: Option<&XapianOp> = None;
+    //let mut accumulator = QueryParseState::new();
 
     while qstr.len() > 0 {
         //println!("Processing '{}'", qstr);
 
         match take_up_to_operator(qstr.as_bytes()) {
+            Ok((remaining, current)) => {
+                let curr_query = str::from_utf8(&current)?;
+                //println!("Took Query up to operator: '{}'", curr_query);
+                qstr = str::from_utf8(&remaining)?;
+                if query.is_none() {
+                    let q = qp
+                        .parse_query(curr_query, flags)
+                        .expect("QueryParser error");
+                    //println!("parsed query string '{}'", curr_query);
+                    query = Some(q);
+                } else {
+                    let op = match operator {
+                        Some(&XapianOp::OpAndNot) => {
+                            //println!("Use Operator And Not");
+                            XapianOp::OpAndNot
+                        }
+                        Some(&XapianOp::OpAnd) => {
+                            //println!("Use Operator And");
+                            XapianOp::OpAnd
+                        }
+                        Some(&XapianOp::OpXor) => {
+                            //println!("Use Operator Xor");
+                            XapianOp::OpXor
+                        }
+                        Some(&XapianOp::OpOr) => {
+                            //println!("Use Operator Or");
+                            XapianOp::OpOr
+                        }
+                        _ => {
+                            eprintln!("Found unsupported Xapian Operation");
+                            XapianOp::OpAnd
+                        }
+                    };
+
+                    //println!("appended query string {}", curr_query);
+                    query = Some(
+                        query
+                            .unwrap()
+                            .add_right(op, &mut qp.parse_query(curr_query, flags)?)
+                            .expect("Failed to add_right()"),
+                    );
+                }
+            }
             Err(_) => {
                 //eprintln!("Take up to operator error: '{}' in: '{}'", e, qstr);
                 //println!("Break Query: '{}' {}", qstr, e);
@@ -160,49 +279,6 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
                             .unwrap()
                             .add_right(op, &mut qp.parse_query(qstr, flags)?)
                             .expect("No more operators: Failed to add_right()"),
-                    );
-                }
-            }
-            Ok((remaining, current)) => {
-                let curr_query = str::from_utf8(&current)?;
-                //println!("Took Query up to operator: '{}'", curr_query);
-                qstr = str::from_utf8(&remaining)?;
-                if query.is_none() {
-                    let q = qp
-                        .parse_query(curr_query, flags)
-                        .expect("QueryParser error");
-                    //println!("parsed query string '{}'", curr_query);
-                    query = Some(q);
-                } else {
-                    let op = match operator {
-                        Some(&XapianOp::OpAndNot) => {
-                            //println!("Use Operator And Not");
-                            XapianOp::OpAndNot
-                        }
-                        Some(&XapianOp::OpAnd) => {
-                            //println!("Use Operator And");
-                            XapianOp::OpAnd
-                        }
-                        Some(&XapianOp::OpXor) => {
-                            //println!("Use Operator Xor");
-                            XapianOp::OpXor
-                        }
-                        Some(&XapianOp::OpOr) => {
-                            //println!("Use Operator Or");
-                            XapianOp::OpOr
-                        }
-                        _ => {
-                            eprintln!("Found unsupported Xapian Operation");
-                            XapianOp::OpAnd
-                        }
-                    };
-
-                    //println!("appended query string {}", curr_query);
-                    query = Some(
-                        query
-                            .unwrap()
-                            .add_right(op, &mut qp.parse_query(curr_query, flags)?)
-                            .expect("Failed to add_right()"),
                     );
                 }
             }
