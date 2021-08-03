@@ -35,7 +35,6 @@ DYLD_LIBRARY_PATH=xapian-core-1.4.17/.libs/ ./target/debug/xapian-rusty-test -i
 
 
 # TODO
-- TUI interactive querying
 - Parse human-form queries: `NOT tag:work AND title:"foo bar" AND some thing`
   using 'nom'
 - TUI select many

@@ -22,7 +22,7 @@ pub(crate) struct TikaDocument {
     /// Inherent metadata about the document
     #[serde(default)]
     pub filename: String,
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub full_path: OsString,
 
     /// FrontMatter-derived metadata about the document
@@ -100,7 +100,8 @@ where
 }
 
 pub(crate) fn parse_file(path: &std::path::PathBuf) -> Result<TikaDocument, io::Error> {
-    let s = fs::read_to_string(path.to_str().unwrap())?;
+    let full_path = path.to_str().unwrap();
+    let s = fs::read_to_string(full_path)?;
 
     let (yaml, content) = frontmatter::parse_and_find_content(&s).unwrap();
     match yaml {
@@ -112,9 +113,12 @@ pub(crate) fn parse_file(path: &std::path::PathBuf) -> Result<TikaDocument, io::
             }
 
             let mut doc: TikaDocument = serde_yaml::from_str(&out_str).unwrap();
+            // TODO Is this check necessary?
             if doc.filename == *"" {
                 doc.filename = String::from(path.file_name().unwrap().to_str().unwrap());
             }
+
+            doc.full_path = OsString::from(full_path);
 
             doc.body = content.to_string();
 

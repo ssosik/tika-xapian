@@ -539,14 +539,12 @@ fn perform_query_canned() -> Result<(), Report> {
 // TODO Move as much of this as possible out into tui_app.rs
 use std::io::{stdout, Write};
 use termion::{event::Key, raw::IntoRawMode, screen::AlternateScreen};
-#[allow(unused_imports)]
 use tui::{
     backend::TermionBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
-    Terminal,
+    widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 
 /// Interactive query interface
@@ -565,8 +563,6 @@ fn interactive_query() -> Result<Vec<String>, Report> {
     //    | FlagPureNot as i16
     //    | FlagPartial as i16
     //    | FlagSpellingCorrection as i16;
-
-    let mut selected: Vec<String> = Vec::new();
 
     setup_panic();
 
@@ -624,8 +620,7 @@ fn interactive_query() -> Result<Vec<String>, Report> {
         if let Event::Input(input) = events.next()? {
             match input {
                 Key::Char('\n') => {
-                    selected = app.get_selected();
-                    //println!("DONE");
+                    // Select choice
                     break;
                 }
                 Key::Ctrl('c') => {
@@ -654,7 +649,7 @@ fn interactive_query() -> Result<Vec<String>, Report> {
 
     tui.clear().unwrap();
 
-    Ok(selected)
+    Ok(app.get_selected())
 }
 
 fn setup_panic() {
