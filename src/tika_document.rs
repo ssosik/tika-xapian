@@ -18,7 +18,7 @@ use yaml_rust::YamlEmitter;
 /// Some note here formatted with Markdown syntax
 ///
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub(crate) struct TikaDocument {
+pub struct TikaDocument {
     /// Inherent metadata about the document
     #[serde(default)]
     pub filename: String,

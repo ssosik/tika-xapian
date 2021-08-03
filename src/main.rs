@@ -1,25 +1,13 @@
 mod tika_document;
 mod tui_app;
 mod util;
+mod xapian_utils;
 
 use crate::tika_document::{parse_file, TikaDocument};
-use crate::util::event::{Event, Events};
 use crate::util::glob_files;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use color_eyre::Report;
-use xapian_rusty::FeatureFlag::{
-    FlagBoolean, FlagBooleanAnyCase, FlagLovehate, FlagPartial, FlagPhrase, FlagPureNot,
-    FlagSpellingCorrection, FlagWildcard,
-};
-#[allow(unused_imports)]
-use xapian_rusty::{
-    Database, Document, Query, QueryParser, Stem, TermGenerator, WritableDatabase, XapianOp, BRASS,
-    DB_CREATE_OR_OPEN, DB_CREATE_OR_OVERWRITE,
-};
-
-// Needed to provide `width()` method on String:
-// no method named `width` found for struct `std::string::String` in the current scope
-use unicode_width::UnicodeWidthStr;
+use xapian_rusty::{Document, Stem, TermGenerator, WritableDatabase, BRASS, DB_CREATE_OR_OPEN};
 
 fn setup<'a>(default_config_file: &str) -> Result<ArgMatches, Report> {
     if std::env::var("RUST_LIB_BACKTRACE").is_err() {
@@ -70,6 +58,8 @@ fn setup<'a>(default_config_file: &str) -> Result<ArgMatches, Report> {
         )
         .get_matches();
 
+    tui_app::setup_panic();
+
     Ok(cli)
 }
 
@@ -94,7 +84,7 @@ fn main() -> Result<(), Report> {
         //.map(|entry| match entry {
         //    Ok(path) => {
         //            if let Ok(tikadoc) = parse_file(&path) {
-        //                perform_index(&mut db, &mut tg, &tikadoc)?;
+        //                update_index(&mut db, &mut tg, &tikadoc)?;
         //                if cli.occurrences_of("v") > 0 {
         //                    if let Ok(p) = tikadoc.full_path.into_string() {
         //                        println!("✅ {}", p);
@@ -108,6 +98,7 @@ fn main() -> Result<(), Report> {
         //})
         //.partition(Result::is_ok);
 
+        // TODO is there a rustier way to do this?
         for entry in glob_files(
             &cli.value_of("config").unwrap(),
             cli.value_of("source"),
@@ -119,7 +110,7 @@ fn main() -> Result<(), Report> {
                 // TODO convert this to iterator style using map/filter
                 Ok(path) => {
                     if let Ok(tikadoc) = parse_file(&path) {
-                        perform_index(&mut db, &mut tg, &tikadoc)?;
+                        update_index(&mut db, &mut tg, &tikadoc)?;
                         if cli.occurrences_of("v") > 0 {
                             //if let Ok(p) = tikadoc.full_path.into_string() {
                             //    println!("✅ {}", p);
@@ -143,10 +134,10 @@ fn main() -> Result<(), Report> {
     //let q = parse_user_query(r#"foobar AND vkms"#)?;
     //let q = parse_user_query(r#"openssl x509 and not vkms and not curl"#)?;
     //let q = parse_user_query(r#""#)?;
-    //perform_query(q)?;
+    //xapian_utils::query_db(q)?;
 
     //let result = interactive_query();
-    let mut iter = IntoIterator::into_iter(interactive_query()?); // strings is moved here
+    let mut iter = IntoIterator::into_iter(tui_app::interactive_query()?); // strings is moved here
     while let Some(s) = iter.next() {
         // next() moves a string out of the iter
         println!("{}", s);
@@ -155,280 +146,7 @@ fn main() -> Result<(), Report> {
     Ok(())
 }
 
-use nom::{
-    bytes::complete::{is_not, tag_no_case},
-    combinator::value,
-    {alt, complete, delimited, named, tag, take_until},
-};
-
-use nom::{branch::alt, bytes::complete::tag, IResult};
-use std::str;
-
-named!(
-    doublequoted,
-    delimited!(tag!(r#"""#), is_not(r#"""#), tag!(r#"""#))
-);
-
-// Xapian tags in human format, e.g. "author;" or "title:"
-#[derive(Debug)]
-pub enum XTag {
-    Author,
-    Date,
-    Filename,
-    Fullpath,
-    Title,
-    Subtitle,
-    Tag,
-}
-
-impl XTag {
-    fn to_xapian<'a>(self) -> &'a [u8] {
-        match self {
-            XTag::Author => "A".as_bytes(),
-            XTag::Date => "D".as_bytes(),
-            XTag::Filename => "F".as_bytes(),
-            XTag::Fullpath => "F".as_bytes(),
-            XTag::Title => "S".as_bytes(),
-            XTag::Subtitle => "XS".as_bytes(),
-            XTag::Tag => "K".as_bytes(),
-        }
-    }
-}
-
-pub fn match_xtag(input: &str) -> IResult<&str, &XTag> {
-    alt((
-        value(&XTag::Author, tag("author:")),
-        value(&XTag::Date, tag("date:")),
-        value(&XTag::Filename, tag("filename:")),
-        value(&XTag::Fullpath, tag("fullpath:")),
-        value(&XTag::Title, tag("title:")),
-        value(&XTag::Subtitle, tag("subtitle:")),
-        value(&XTag::Tag, tag("tag:")),
-    ))(input)
-}
-
-pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
-    // Note 1:
-    // From https://github.com/Geal/nom/blob/master/doc/choosing_a_combinator.md
-    // Note that case insensitive comparison is not well defined for unicode,
-    // and that you might have bad surprises
-    // Note 2:
-    // Order these by longest match, according to
-    // https://docs.rs/nom/6.2.1/nom/macro.alt.html#behaviour-of-alt
-    alt((
-        value(&XapianOp::OpAndNot, tag_no_case("AND NOT")),
-        value(&XapianOp::OpAnd, tag_no_case("AND")),
-        value(&XapianOp::OpXor, tag_no_case("XOR")),
-        value(&XapianOp::OpOr, tag_no_case("OR")),
-        // OpAndMaybe,
-        // OpFilter,
-        // OpNear,
-        // OpPhrase,
-        // OpValueRange,
-        // OpScaleWeight,
-        // OpEliteSet,
-        // OpValueGe,
-        // OpValueLe,
-        // OpSynonym,
-    ))(input)
-}
-
-// TODO is there a better way to handle case insensitity here?
-named!(
-    take_up_to_operator,
-    alt!(
-        complete!(take_until!("AND NOT"))
-            | complete!(take_until!("and not"))
-            | complete!(take_until!("AND"))
-            | complete!(take_until!("and"))
-            | complete!(take_until!("XOR"))
-            | complete!(take_until!("xor"))
-            | complete!(take_until!("OR"))
-            | complete!(take_until!("or"))
-    )
-);
-
-fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
-    let mut qp = QueryParser::new()?;
-    let mut stem = Stem::new("en")?;
-    qp.set_stemmer(&mut stem)?;
-
-    let flags = FlagBoolean as i16
-        | FlagPhrase as i16
-        | FlagLovehate as i16
-        | FlagBooleanAnyCase as i16
-        | FlagWildcard as i16
-        | FlagPureNot as i16
-        | FlagPartial as i16
-        | FlagSpellingCorrection as i16;
-
-    // Accumulators, start them off as empty options
-    let mut query: Option<Query> = None;
-    let mut operator: Option<&XapianOp> = None;
-
-    while qstr.len() > 0 {
-        //println!("Processing '{}'", qstr);
-
-        match take_up_to_operator(qstr.as_bytes()) {
-            Err(_) => {
-                //eprintln!("Take up to operator error: '{}' in: '{}'", e, qstr);
-                //println!("Break Query: '{}' {}", qstr, e);
-                //break;
-
-                // TODO reduce duplication here, test that 'e' is expected Error
-                if query.is_none() {
-                    let q = qp
-                        .parse_query(qstr, flags)
-                        .expect("No more operators: QueryParser error");
-                    //println!("parsed query string '{}'", qstr);
-                    query = Some(q);
-                } else {
-                    let op = match operator {
-                        Some(&XapianOp::OpAndNot) => {
-                            //println!("No more operators: Use Operator And Not");
-                            XapianOp::OpAndNot
-                        }
-                        Some(&XapianOp::OpAnd) => {
-                            //println!("No more operators: Use Operator And");
-                            XapianOp::OpAnd
-                        }
-                        Some(&XapianOp::OpXor) => {
-                            //println!("No more operators: Use Operator Xor");
-                            XapianOp::OpXor
-                        }
-                        Some(&XapianOp::OpOr) => {
-                            //println!("No more operators: Use Operator Or");
-                            XapianOp::OpOr
-                        }
-                        _ => {
-                            //eprintln!("No more operators: Found unsupported Xapian Operation");
-                            XapianOp::OpAnd
-                        }
-                    };
-
-                    //println!("No more operators: appended query string {}", qstr);
-                    query = Some(
-                        query
-                            .unwrap()
-                            .add_right(op, &mut qp.parse_query(qstr, flags)?)
-                            .expect("No more operators: Failed to add_right()"),
-                    );
-                }
-            }
-            Ok((remaining, current)) => {
-                let curr_query = str::from_utf8(&current)?;
-                //println!("Took Query up to operator: '{}'", curr_query);
-                qstr = str::from_utf8(&remaining)?;
-                if query.is_none() {
-                    let q = qp
-                        .parse_query(curr_query, flags)
-                        .expect("QueryParser error");
-                    //println!("parsed query string '{}'", curr_query);
-                    query = Some(q);
-                } else {
-                    let op = match operator {
-                        Some(&XapianOp::OpAndNot) => {
-                            //println!("Use Operator And Not");
-                            XapianOp::OpAndNot
-                        }
-                        Some(&XapianOp::OpAnd) => {
-                            //println!("Use Operator And");
-                            XapianOp::OpAnd
-                        }
-                        Some(&XapianOp::OpXor) => {
-                            //println!("Use Operator Xor");
-                            XapianOp::OpXor
-                        }
-                        Some(&XapianOp::OpOr) => {
-                            //println!("Use Operator Or");
-                            XapianOp::OpOr
-                        }
-                        _ => {
-                            eprintln!("Found unsupported Xapian Operation");
-                            XapianOp::OpAnd
-                        }
-                    };
-
-                    //println!("appended query string {}", curr_query);
-                    query = Some(
-                        query
-                            .unwrap()
-                            .add_right(op, &mut qp.parse_query(curr_query, flags)?)
-                            .expect("Failed to add_right()"),
-                    );
-                }
-            }
-        };
-
-        //println!("MATCH OP: {}", qstr);
-        match match_op(&qstr) {
-            Ok((remaining, op)) => {
-                operator = match op {
-                    XapianOp::OpAndNot => {
-                        //println!("Set Operator And Not");
-                        Some(&XapianOp::OpAndNot)
-                    }
-                    XapianOp::OpAnd => {
-                        //println!("Set Operator And");
-                        Some(&XapianOp::OpAnd)
-                    }
-                    XapianOp::OpXor => {
-                        //println!("Set Operator Xor");
-                        Some(&XapianOp::OpXor)
-                    }
-                    XapianOp::OpOr => {
-                        //println!("Set Operator Or");
-                        Some(&XapianOp::OpOr)
-                    }
-                    _ => {
-                        //eprintln!("Found unsupported Xapian Operation");
-                        Some(&XapianOp::OpAnd)
-                    }
-                };
-                qstr = remaining
-            }
-            Err(_) => {
-                //eprintln!("Match Op error: '{}' in '{}'", e, qstr);
-                break;
-            }
-        };
-    }
-
-    //let dblqtd = r#""openssl x509" AND vkms"#;
-    //match doublequoted(dblqtd.as_bytes()) {
-    //    Ok((a, b)) => {
-    //        println!(
-    //            "DBL A: {} B:{}",
-    //            str::from_utf8(a).unwrap(),
-    //            str::from_utf8(b).unwrap()
-    //        );
-    //    }
-    //    Err(e) => {
-    //        println!("DoubleQuote no good: {}", e);
-    //    }
-    //};
-
-    //let qstr1 = r#"openssl AND NOT author:"steve sosik""#;
-    //match doublequoted(qstr1.as_bytes()) {
-    //    Ok((a, b)) => {
-    //        println!(
-    //            "THING A: {} B:{}",
-    //            str::from_utf8(a).unwrap(),
-    //            str::from_utf8(b).unwrap()
-    //        );
-    //    }
-    //    Err(e) => {
-    //        println!("Thing no good: {}", e);
-    //    }
-    //};
-
-    match query {
-        Some(ret) => Ok(ret),
-        None => Ok(qp.parse_query("", flags).expect("QueryParser error")),
-    }
-}
-
-fn perform_index(
+fn update_index(
     db: &mut WritableDatabase,
     tg: &mut TermGenerator,
     tikadoc: &TikaDocument,
@@ -457,217 +175,4 @@ fn perform_index(
     db.replace_document(&id, &mut doc)?;
 
     Ok(())
-}
-
-//fn perform_query(mut db: Database, mut q: Query) -> Result<Vec<TikaDocument>, Report> {
-fn perform_query(mut q: Query) -> Result<Vec<TikaDocument>, Report> {
-    // TODO Reuse existing DB instead of creating a new one on each query
-    let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
-    let mut enq = db.new_enquire()?;
-    enq.set_query(&mut q)?;
-    // TODO set this based on terminal height?
-    let mut mset = enq.get_mset(0, 100)?;
-
-    // TODO with verbose logging log this:
-    //let appx_matches = mset.get_matches_estimated()?;
-    //println!("Approximate Matches {}", appx_matches);
-
-    let mut matches = Vec::new();
-    let mut v = mset.iterator().unwrap();
-    while v.is_next().unwrap() {
-        let res = v.get_document_data();
-        // Can use flatten() or some other iterators/combinators?
-        if let Ok(data) = res {
-            let v: TikaDocument = serde_json::from_str(&data)?;
-            //println!("Match {}", v.filename);
-            matches.push(v);
-        }
-        v.next()?;
-    }
-
-    Ok(matches)
-}
-
-#[allow(dead_code)]
-fn perform_query_canned() -> Result<(), Report> {
-    let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
-    let mut qp = QueryParser::new()?;
-    let mut stem = Stem::new("en")?;
-    qp.set_stemmer(&mut stem)?;
-
-    let flags = FlagBoolean as i16
-        | FlagPhrase as i16
-        | FlagLovehate as i16
-        | FlagBooleanAnyCase as i16
-        | FlagWildcard as i16
-        | FlagPureNot as i16
-        | FlagPartial as i16
-        | FlagSpellingCorrection as i16;
-
-    // Combine queries
-    //let mut query = qp
-    //    .parse_query("a*", flags)
-    //    .expect("not found");
-    //let mut q = qp
-    //    .parse_query_with_prefix("work", flags, "K")
-    //    .expect("not found");
-    //query = query.add_right(XapianOp::OpAnd, &mut q).expect("not found");
-
-    // Negate a tag
-    let mut query = qp
-        .parse_query_with_prefix("NOT work", flags, "K")
-        .expect("not found");
-
-    let mut enq = db.new_enquire()?;
-    enq.set_query(&mut query)?;
-    let mut mset = enq.get_mset(0, 100)?;
-    let appx_matches = mset.get_matches_estimated()?;
-    println!("Approximate Matches {}", appx_matches);
-
-    let mut v = mset.iterator().unwrap();
-    while v.is_next().unwrap() {
-        let res = v.get_document_data();
-        if let Ok(data) = res {
-            let v: TikaDocument = serde_json::from_str(&data)?;
-            println!("Match {}", v.filename);
-        } else {
-            eprintln!("No Matches");
-        }
-        v.next()?;
-    }
-
-    Ok(())
-}
-
-// TODO Move as much of this as possible out into tui_app.rs
-use std::io::{stdout, Write};
-use termion::{event::Key, raw::IntoRawMode, screen::AlternateScreen};
-use tui::{
-    backend::TermionBackend,
-    layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    text::{Span, Spans},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
-};
-
-/// Interactive query interface
-#[allow(dead_code)]
-fn interactive_query() -> Result<Vec<String>, Report> {
-    //let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
-    let mut qp = QueryParser::new()?;
-    let mut stem = Stem::new("en")?;
-    qp.set_stemmer(&mut stem)?;
-
-    //let flags = FlagBoolean as i16
-    //    | FlagPhrase as i16
-    //    | FlagLovehate as i16
-    //    | FlagBooleanAnyCase as i16
-    //    | FlagWildcard as i16
-    //    | FlagPureNot as i16
-    //    | FlagPartial as i16
-    //    | FlagSpellingCorrection as i16;
-
-    setup_panic();
-
-    let mut tui = tui::Terminal::new(TermionBackend::new(AlternateScreen::from(
-        stdout().into_raw_mode().unwrap(),
-    )))
-    .unwrap();
-
-    // Setup event handlers
-    let events = Events::new();
-
-    // Create default app state
-    let mut app = tui_app::TerminalApp::default();
-
-    loop {
-        // Draw UI
-        tui.draw(|f| {
-            let panes = Layout::default()
-                .direction(Direction::Vertical)
-                .margin(1)
-                .constraints([Constraint::Min(1), Constraint::Length(3)].as_ref())
-                .split(f.size());
-            let selected_style = Style::default().add_modifier(Modifier::REVERSED);
-
-            // Output area where match titles are displayed
-            let matches: Vec<ListItem> = app
-                .matches
-                .iter()
-                .map(|m| {
-                    let content = vec![Spans::from(Span::raw(format!("{}", m.title)))];
-                    ListItem::new(content)
-                })
-                .collect();
-            let matches = List::new(matches)
-                .block(Block::default().borders(Borders::ALL))
-                .highlight_style(selected_style);
-            //.highlight_symbol("> ");
-            f.render_stateful_widget(matches, panes[0], &mut app.state);
-
-            // Input area where queries are entered
-            let input = Paragraph::new(app.input.as_ref())
-                .style(Style::default().fg(Color::Yellow))
-                .block(Block::default().borders(Borders::ALL));
-            f.render_widget(input, panes[1]);
-            // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
-            f.set_cursor(
-                // Put cursor past the end of the input text
-                panes[1].x + app.input.width() as u16 + 1,
-                // Move one line down, from the border to the input line
-                panes[1].y + 1,
-            )
-        })?;
-
-        // Handle input
-        if let Event::Input(input) = events.next()? {
-            match input {
-                Key::Char('\n') => {
-                    // Select choice
-                    break;
-                }
-                Key::Ctrl('c') => {
-                    break;
-                }
-                Key::Char(c) => {
-                    app.input.push(c);
-                }
-                Key::Backspace => {
-                    app.input.pop();
-                }
-                Key::Down => {
-                    app.next();
-                }
-                Key::Up => {
-                    app.previous();
-                }
-                _ => {}
-            }
-
-            let query = parse_user_query(&app.input)?;
-            //app.matches = perform_query(db, query)?;
-            app.matches = perform_query(query)?;
-        }
-    }
-
-    tui.clear().unwrap();
-
-    Ok(app.get_selected())
-}
-
-fn setup_panic() {
-    std::panic::set_hook(Box::new(move |x| {
-        stdout()
-            .into_raw_mode()
-            .unwrap()
-            .suspend_raw_mode()
-            .unwrap();
-        write!(
-            stdout().into_raw_mode().unwrap(),
-            "{}",
-            termion::screen::ToMainScreen
-        )
-        .unwrap();
-        write!(stdout(), "{:?}", x).unwrap();
-    }));
 }
