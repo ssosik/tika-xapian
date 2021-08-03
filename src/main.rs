@@ -7,7 +7,6 @@ use crate::util::event::{Event, Events};
 use crate::util::glob_files;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use color_eyre::Report;
-use eyre::eyre;
 use xapian_rusty::FeatureFlag::{
     FlagBoolean, FlagBooleanAnyCase, FlagLovehate, FlagPartial, FlagPhrase, FlagPureNot,
     FlagSpellingCorrection, FlagWildcard,
@@ -153,29 +152,13 @@ fn main() -> Result<(), Report> {
     Ok(())
 }
 
-#[allow(unused_imports)]
 use nom::{
-    bytes::complete::{is_not, tag_no_case, take_while1, take_while_m_n},
-    character::complete::{alpha1, alphanumeric1, anychar, char, space0},
-    combinator::{map_res, value},
-    error::{ErrorKind, ParseError},
-    sequence::{terminated, tuple},
-    Err,
-    {
-        add_return_error, alt, call, char, complete, delimited, error_node_position,
-        error_position, escaped, is_not, named, none_of, one_of, peek, tag, take_until, take_while,
-        tuple,
-    },
+    bytes::complete::{is_not, tag_no_case},
+    combinator::value,
+    {alt, complete, delimited, named, tag, take_until},
 };
 
-#[allow(unused_imports)]
-use nom::{
-    branch::alt,
-    bytes::complete::{escaped, tag},
-    character::complete::none_of,
-    sequence::delimited,
-    IResult,
-};
+use nom::{branch::alt, bytes::complete::tag, IResult};
 use std::str;
 
 named!(
@@ -436,10 +419,9 @@ fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
     //    }
     //};
 
-    //println!("Done");
     match query {
         Some(ret) => Ok(ret),
-        None => Ok(qp.parse_query("", flags).expect("QueryParser error"))
+        None => Ok(qp.parse_query("", flags).expect("QueryParser error")),
     }
 }
 
@@ -555,7 +537,7 @@ fn perform_query_canned() -> Result<(), Report> {
 }
 
 // TODO Move as much of this as possible out into tui_app.rs
-use std::io::{Write, stdout};
+use std::io::{stdout, Write};
 use termion::{event::Key, raw::IntoRawMode, screen::AlternateScreen};
 #[allow(unused_imports)]
 use tui::{
