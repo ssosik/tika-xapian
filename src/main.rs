@@ -52,7 +52,7 @@ fn setup<'a>(default_config_file: &str) -> Result<ArgMatches, Report> {
                 .help("Sets the level of verbosity"),
         )
         .arg(
-            Arg::with_name("index")
+            Arg::with_name("update-index")
                 .short("i")
                 .help("Index data rather than querying the DB"),
         )
@@ -77,8 +77,8 @@ fn main() -> Result<(), Report> {
     let default_config_file = shellexpand::tilde("~/.config/tika/tika.toml");
     let cli = setup(&default_config_file)?;
 
-    // If requested, index the data
-    if cli.occurrences_of("index") > 0 {
+    // If requested, reindex the data
+    if cli.occurrences_of("update-index") > 0 {
         let mut db = WritableDatabase::new("mydb", BRASS, DB_CREATE_OR_OPEN)?;
         let mut tg = TermGenerator::new()?;
         let mut stemmer = Stem::new("en")?;
