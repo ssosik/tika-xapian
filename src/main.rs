@@ -129,19 +129,19 @@ fn main() -> Result<(), Report> {
         db.commit()?;
     }
 
-    //let q = parse_user_query(r#"aaabcde c AND NOT vkms"#)?;
-    //let q = parse_user_query(r#"foobar AND NOT vkms"#)?;
-    //let q = parse_user_query(r#"foobar AND vkms"#)?;
-    //let q = parse_user_query(r#"openssl x509 and not vkms and not curl"#)?;
-    //let q = parse_user_query(r#""#)?;
-    //xapian_utils::query_db(q)?;
+    //let q = xapian_utils::parse_user_query(r#"aaabcde c AND NOT vkms"#)?;
+    let q = xapian_utils::parse_user_query(r#"foobar AND NOT vkms"#)?;
+    //let q = xapian_utils::parse_user_query(r#"foobar AND vkms"#)?;
+    //let q = xapian_utils::parse_user_query(r#"openssl x509 and not vkms and not curl"#)?;
+    //let q = xapian_utils::parse_user_query(r#""#)?;
+    println!("Result {:?}", xapian_utils::query_db(q)?);
 
-    //let result = interactive_query();
-    let mut iter = IntoIterator::into_iter(tui_app::interactive_query()?); // strings is moved here
-    while let Some(s) = iter.next() {
-        // next() moves a string out of the iter
-        println!("{}", s);
-    }
+    ////let result = interactive_query();
+    //let mut iter = IntoIterator::into_iter(tui_app::interactive_query()?); // strings is moved here
+    //while let Some(s) = iter.next() {
+    //    // next() moves a string out of the iter
+    //    println!("{}", s);
+    //}
 
     Ok(())
 }
