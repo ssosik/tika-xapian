@@ -7,6 +7,7 @@ use crate::util::event::{Event, Events};
 use crate::util::glob_files;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use color_eyre::Report;
+use eyre::eyre;
 use xapian_rusty::FeatureFlag::{
     FlagBoolean, FlagBooleanAnyCase, FlagLovehate, FlagPartial, FlagPhrase, FlagPureNot,
     FlagSpellingCorrection, FlagWildcard,
@@ -436,7 +437,10 @@ fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
     //};
 
     //println!("Done");
-    Ok(query.unwrap())
+    match query {
+        Some(ret) => Ok(ret),
+        None => Ok(qp.parse_query("", flags).expect("QueryParser error"))
+    }
 }
 
 fn perform_index(
