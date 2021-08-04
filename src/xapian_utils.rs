@@ -7,7 +7,7 @@ use nom::{
     combinator::value,
     multi::{many0, many1},
     sequence::{delimited, tuple},
-    {alt, branch::alt, complete, delimited, named, tag, take_until, value, IResult},
+    {alt, branch::alt, complete, delimited, named, tag, take_until, value}, // {IResult},
 };
 use std::convert::From;
 use std::fmt;
@@ -53,7 +53,7 @@ impl fmt::Display for XapianTag {
     }
 }
 
-pub fn xapiantag(input: &str) -> IResult<&str, XapianTag> {
+pub fn xapiantag(input: &str) -> IResult<XapianTag> {
     alt((
         value(XapianTag::Author, tag_no_case("author:")),
         value(XapianTag::Date, tag_no_case("date:")),
@@ -62,7 +62,7 @@ pub fn xapiantag(input: &str) -> IResult<&str, XapianTag> {
         value(XapianTag::Title, tag_no_case("title:")),
         value(XapianTag::Subtitle, tag_no_case("subtitle:")),
         value(XapianTag::Tag, tag_no_case("tag:")),
-    ))(input)
+    ))(Span::new(input))
 }
 
 // Local representation of xapian expression operators, most notably these are Copy!
@@ -148,7 +148,7 @@ impl fmt::Display for MatchOp {
     }
 }
 
-pub fn matchop(input: &str) -> IResult<&str, MatchOp> {
+pub fn matchop(input: &str) -> IResult<MatchOp> {
     alt((
         value(MatchOp::AndNot, tag_no_case("AND NOT")),
         value(MatchOp::And, tag_no_case("AND")),
@@ -164,11 +164,17 @@ pub fn matchop(input: &str) -> IResult<&str, MatchOp> {
         value(MatchOp::ValueGe, tag_no_case(">")),
         value(MatchOp::ValueLe, tag_no_case("<")),
         value(MatchOp::Synonym, tag_no_case("SYNONYM")),
-    ))(input)
+    ))(Span::new(input))
 }
 
+use nom_locate::LocatedSpan;
+
+pub type Span<'a> = LocatedSpan<&'a str>;
+
+pub type IResult<'a, O> = nom::IResult<Span<'a>, O>;
+
 #[allow(dead_code)]
-fn word(input: &str) -> IResult<&str, Vec<&str>> {
+fn word(input: Span) -> IResult<Vec<Span>> {
     // TODO should more characters be supported on a "word"?
     many1(alt((alphanumeric0, tag("_"))))(input)
 }
@@ -178,7 +184,10 @@ mod tests {
     use super::*;
     #[test]
     fn exploration() {
-        assert_eq!(word(r#"foo bar"#), Ok(("", vec![])))
+        assert_eq!(
+            word(Span::new(r#"foo bar"#)),
+            Ok((Span::new(""), vec![Span::new("")]))
+        )
     }
 }
 
@@ -290,7 +299,7 @@ pub fn test_user_query(qstr: &str) -> Result<(), Report> {
     Ok(())
 }
 
-pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
+pub fn parse_user_query(mut qstr: LocatedSpan<&str>) -> Result<Query, Report> {
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
     qp.set_stemmer(&mut stem)?;
@@ -317,7 +326,7 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
             Ok((remaining, current)) => {
                 let curr_query = str::from_utf8(&current)?;
                 //println!("Took Query up to operator: '{}'", curr_query);
-                qstr = str::from_utf8(&remaining)?;
+                qstr = Span::new(str::from_utf8(&remaining)?);
                 if query.is_none() {
                     let q = qp
                         .parse_query(curr_query, flags)
@@ -342,7 +351,7 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
                 // TODO reduce duplication here, test that 'e' is expected Error
                 if query.is_none() {
                     let q = qp
-                        .parse_query(qstr, flags)
+                        .parse_query(&qstr.to_string(), flags)
                         .expect("No more operators: QueryParser error");
                     //println!("parsed query string '{}'", qstr);
                     query = Some(q);
@@ -351,7 +360,10 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
                     query = Some(
                         query
                             .unwrap()
-                            .add_right(operator.unwrap(), &mut qp.parse_query(qstr, flags)?)
+                            .add_right(
+                                operator.unwrap(),
+                                &mut qp.parse_query(&qstr.to_string(), flags)?,
+                            )
                             .expect("No more operators: Failed to add_right()"),
                     );
                 }
