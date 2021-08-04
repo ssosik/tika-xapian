@@ -183,23 +183,42 @@ fn word(input: Span) -> IResult<Vec<Span>> {
 mod tests {
     use super::*;
     #[test]
-    fn test_word() {
-        //let result = word(Span::new(r#"foo"#));
-        let (remainder, matched) = word(Span::new(r#"foo bar"#)).expect("Failed to parse");
-
+    fn test_word_on_one_word_no_trailing_space() {
+        let res = word(Span::new(r#"foo"#));
+        assert!(res.is_err())
+    }
+    #[test]
+    fn test_word_on_one_word_with_trailing_space() {
+        let (remainder, matched) = word(Span::new(r#"foo "#)).expect("Failed to parse input");
 
         assert_eq!(matched.len(), 1);
+        assert_eq!(matched[0].fragment(), &&"foo"[..]);
         assert_eq!(matched[0].location_offset(), 0);
         assert_eq!(matched[0].location_line(), 1);
         assert_eq!(matched[0].get_column(), 1);
-        assert_eq!(matched[0].fragment(), &&"foo"[..]);
 
         // // For debugging:
         //assert_eq!(remainder, Span::new(" bar"));
+        assert_eq!(remainder.fragment(), &&" "[..]);
         assert_eq!(remainder.location_offset(), 3);
         assert_eq!(remainder.location_line(), 1);
         assert_eq!(remainder.get_column(), 4);
+    }
+
+    #[test]
+    fn test_word_on_two_space_separated_words() {
+        let (remainder, matched) = word(Span::new(r#"foo bar"#)).expect("Failed to parse input");
+
+        assert_eq!(matched.len(), 1);
+        assert_eq!(matched[0].fragment(), &&"foo"[..]);
+        assert_eq!(matched[0].location_offset(), 0);
+        assert_eq!(matched[0].location_line(), 1);
+        assert_eq!(matched[0].get_column(), 1);
+
         assert_eq!(remainder.fragment(), &&" bar"[..]);
+        assert_eq!(remainder.location_offset(), 3);
+        assert_eq!(remainder.location_line(), 1);
+        assert_eq!(remainder.get_column(), 4);
     }
 }
 
