@@ -171,6 +171,15 @@ fn word(input: &str) -> IResult<&str, Vec<&str>> {
     many1(alt((alphanumeric0, tag("_"))))(input)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn exploration() {
+        assert_eq!(word(r#"foobar"#), Ok(("", vec![])))
+    }
+}
+
 //fn words(input: &str) -> IResult<&str, Vec<&str>> {
 //    many1(alt((multispace0, word)))(input)
 //}
