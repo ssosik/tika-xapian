@@ -253,83 +253,6 @@ named!(
     )
 );
 
-use nom::is_not;
-use nom::recognize;
-use nom::tuple;
-
-named!(
-    doublequoted,
-    recognize!(delimited!(tag!(r#"""#), is_not(r#"""#), tag!(r#"""#)))
-);
-
-named!(
-    tagdoublequoted,
-    recognize!(tuple!(
-        is_not!(r#" :""#),
-        tag!(r#":"#),
-        tag!(r#"""#),
-        is_not!(r#"""#),
-        tag!(r#"""#)
-    ))
-);
-
-named!(
-    tagword,
-    recognize!(tuple!(is_not!(r#" :""#), tag!(r#":"#), is_not!(r#" "#)))
-);
-
-named!(
-    operator_expr,
-    recognize!(alt!(
-        complete!(take_until!("AND NOT"))
-            | complete!(take_until!("and not"))
-            | complete!(take_until!("AND"))
-            | complete!(take_until!("and"))
-            | complete!(take_until!("XOR"))
-            | complete!(take_until!("xor"))
-            | complete!(take_until!("OR"))
-            | complete!(take_until!("or"))
-    ))
-);
-
-pub fn test_user_query(qstr: &str) -> Result<(), Report> {
-    if let Ok((a, b)) = doublequoted(qstr.as_bytes()) {
-        let a = str::from_utf8(a).unwrap();
-        let b = str::from_utf8(b).unwrap();
-        println!("DoubleQuoted a:'{}' b:'{}'", b, a);
-    } else if let Ok((a, b)) = tagdoublequoted(qstr.as_bytes()) {
-        let a = str::from_utf8(a).unwrap();
-        let b = str::from_utf8(b).unwrap();
-        println!("TagDoubleQuoted a:'{}' b:'{}'", a, b);
-        if let Ok((s, tag)) = xapiantag(b) {
-            println!("TagDoubleQuoted: {} {} {}", a, tag, s);
-        } else {
-            println!("NoTagDoubleQuoted");
-        }
-    } else if let Ok((a, b)) = operator_expr(qstr.as_bytes()) {
-        let a = str::from_utf8(a).unwrap();
-        let b = str::from_utf8(b).unwrap();
-        if let Ok((s, op)) = matchop(a) {
-            println!("Operator: {} {} {}", b, op, s);
-        } else {
-            println!("NoOperator");
-        }
-    } else if let Ok((a, b)) = tagword(qstr.as_bytes()) {
-        let a = str::from_utf8(a).unwrap();
-        let b = str::from_utf8(b).unwrap();
-        println!("TagWord a:'{}' b:'{}'", a, b);
-        if let Ok((s, tag)) = xapiantag(b) {
-            println!("TagWord : {} {} {}", a, tag, s);
-        } else {
-            println!("NoTagWord ");
-        }
-    } else {
-        println!("Bare expr:'{}'", qstr);
-    };
-
-    Ok(())
-}
-
 pub fn parse_user_query(mut qstr: LocatedSpan<&str>) -> Result<Query, Report> {
     let mut qp = QueryParser::new()?;
     let mut stem = Stem::new("en")?;
@@ -415,39 +338,6 @@ pub fn parse_user_query(mut qstr: LocatedSpan<&str>) -> Result<Query, Report> {
         };
     }
 
-    //named!(
-    //    doublequoted,
-    //    delimited!(tag!(r#"""#), is_not(r#"""#), tag!(r#"""#))
-    //);
-
-    //let dblqtd = r#""openssl x509" AND vkms"#;
-    //match doublequoted(dblqtd.as_bytes()) {
-    //    Ok((a, b)) => {
-    //        println!(
-    //            "DBL A: {} B:{}",
-    //            str::from_utf8(a).unwrap(),
-    //            str::from_utf8(b).unwrap()
-    //        );
-    //    }
-    //    Err(e) => {
-    //        println!("DoubleQuote no good: {}", e);
-    //    }
-    //};
-
-    //let qstr1 = r#"openssl AND NOT author:"steve sosik""#;
-    //match doublequoted(qstr1.as_bytes()) {
-    //    Ok((a, b)) => {
-    //        println!(
-    //            "THING A: {} B:{}",
-    //            str::from_utf8(a).unwrap(),
-    //            str::from_utf8(b).unwrap()
-    //        );
-    //    }
-    //    Err(e) => {
-    //        println!("Thing no good: {}", e);
-    //    }
-    //};
-
     match query {
         Some(ret) => Ok(ret),
         None => Ok(qp.parse_query("", flags).expect("QueryParser error")),
@@ -481,57 +371,6 @@ pub fn query_db(mut q: Query) -> Result<Vec<TikaDocument>, Report> {
     }
 
     Ok(matches)
-}
-
-#[allow(dead_code)]
-fn perform_query_canned() -> Result<(), Report> {
-    let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
-    let mut qp = QueryParser::new()?;
-    let mut stem = Stem::new("en")?;
-    qp.set_stemmer(&mut stem)?;
-
-    let flags = FlagBoolean as i16
-        | FlagPhrase as i16
-        | FlagLovehate as i16
-        | FlagBooleanAnyCase as i16
-        | FlagWildcard as i16
-        | FlagPureNot as i16
-        | FlagPartial as i16
-        | FlagSpellingCorrection as i16;
-
-    // Combine queries
-    //let mut query = qp
-    //    .parse_query("a*", flags)
-    //    .expect("not found");
-    //let mut q = qp
-    //    .parse_query_with_prefix("work", flags, "K")
-    //    .expect("not found");
-    //query = query.add_right(XapianOp::OpAnd, &mut q).expect("not found");
-
-    // Negate a tag
-    let mut query = qp
-        .parse_query_with_prefix("NOT work", flags, "K")
-        .expect("not found");
-
-    let mut enq = db.new_enquire()?;
-    enq.set_query(&mut query)?;
-    let mut mset = enq.get_mset(0, 100)?;
-    let appx_matches = mset.get_matches_estimated()?;
-    println!("Approximate Matches {}", appx_matches);
-
-    let mut v = mset.iterator().unwrap();
-    while v.is_next().unwrap() {
-        let res = v.get_document_data();
-        if let Ok(data) = res {
-            let v: TikaDocument = serde_json::from_str(&data)?;
-            println!("Match {}", v.filename);
-        } else {
-            eprintln!("No Matches");
-        }
-        v.next()?;
-    }
-
-    Ok(())
 }
 
 //named!(

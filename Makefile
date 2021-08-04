@@ -8,6 +8,12 @@ XPCOREZ = $(XPCORE).tar.xz
 build: $(ZLIB) $(XPCORE)/.libs
 	cargo build
 
+test: $(ZLIB) $(XPCORE)/.libs
+	DYLD_LIBRARY_PATH=$(XPCORE)/.libs cargo test
+
+run: $(ZLIB) $(XPCORE)/.libs
+	DYLD_LIBRARY_PATH=$(XPCORE)/.libs cargo run
+
 # Fetch dependencies
 $(ZLIBZ):
 	wget https://zlib.net/$(ZLIBZ)

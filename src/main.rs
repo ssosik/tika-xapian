@@ -129,25 +129,6 @@ fn main() -> Result<(), Report> {
         db.commit()?;
     }
 
-    println!("1:");
-    xapian_utils::test_user_query(r#"AND NOT vkms"#)?;
-    //println!("2:");
-    //xapian_utils::test_user_query(r#"foobar AND NOT vkms"#)?;
-    //println!("2A:");
-    //xapian_utils::test_user_query(r#"foobar AND vkms"#)?;
-    //println!("3:");
-    //xapian_utils::test_user_query(r#"foobar vkms"#)?;
-    //println!("4:");
-    //xapian_utils::test_user_query(r#"title:foobar vkms"#)?;
-    //println!("5:");
-    //xapian_utils::test_user_query(r#""foobar vkms""#)?;
-    //println!("6:");
-    //xapian_utils::test_user_query(r#"title:"foobar vkms""#)?;
-    //println!("7:");
-    //xapian_utils::test_user_query(r#""foobar vkms" chunk"#)?;
-    //println!("8:");
-    //xapian_utils::test_user_query(r#"foobar vkms > chunk"#)?;
-
     //let q = xapian_utils::parse_user_query(r#"aaabcde c AND NOT vkms"#)?;
     //let q = xapian_utils::parse_user_query(r#"foobar AND NOT vkms"#)?;
     //let q = xapian_utils::parse_user_query(r#"foobar AND vkms"#)?;
