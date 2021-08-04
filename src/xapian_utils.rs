@@ -22,6 +22,7 @@ use xapian_rusty::{Database, Query, QueryParser, Stem, XapianOp, DB_CREATE_OR_OV
 //   https://iximiuz.com/en/posts/rust-writing-parsers-with-nom/
 
 // Xapian tags in human format, e.g. "author:" or "title:"
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum XapianTag {
     Author,
@@ -53,6 +54,7 @@ impl fmt::Display for XapianTag {
     }
 }
 
+#[allow(dead_code)]
 pub fn xapiantag(input: &str) -> IResult<XapianTag> {
     alt((
         value(XapianTag::Author, tag_no_case("author:")),
