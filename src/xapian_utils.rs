@@ -5,6 +5,7 @@ use nom::{
     combinator::value,
     {alt, branch::alt, complete, delimited, named, tag, take_until, value, IResult},
 };
+use std::fmt;
 use std::str;
 use xapian_rusty::FeatureFlag::{
     FlagBoolean, FlagBooleanAnyCase, FlagLovehate, FlagPartial, FlagPhrase, FlagPureNot,
@@ -35,6 +36,13 @@ impl XapianTag {
             XapianTag::Subtitle => "XS",
             XapianTag::Tag => "K",
         }
+    }
+}
+
+impl fmt::Display for XapianTag {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "<{}>", self.to_xapian())
     }
 }
 
@@ -104,7 +112,6 @@ impl From<XapianOp> for MatchOp {
     }
 }
 
-use std::fmt;
 impl fmt::Display for MatchOp {
     // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -323,27 +330,26 @@ pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
         if let Ok((s, tag)) = match_xapiantag2(b.as_bytes()) {
             let s = str::from_utf8(s).unwrap();
             let tag = str::from_utf8(tag).unwrap();
-            println!("Tag: {} {}", tag, s);
+            println!("TagDoubleQuoted: {} {} {}", a, tag, s);
         } else {
-            println!("NoTag");
+            println!("NoTagDoubleQuoted");
         }
     } else if let Ok((a, b)) = operator_expr(qstr.as_bytes()) {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
-        println!("Operator a:'{}' b:'{}'", a, b);
         if let Ok((s, op)) = match_op3(a) {
-            println!("Operator: {} {}", op, s);
+            println!("Operator: {} {} {}", b, op, s);
         } else {
             println!("NoOperator");
         }
     } else if let Ok((a, b)) = tagword(qstr.as_bytes()) {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
-        println!("TagWord a:'{}' b:'{}'", b, a);
+        println!("TagWord a:'{}' b:'{}'", a, b);
         if let Ok((s, tag)) = match_xapiantag(b) {
-            println!("Tag: {} {}", tag.to_xapian(), s);
+            println!("TagWord : {} {} {}", a, tag, s);
         } else {
-            println!("NoTag");
+            println!("NoTagWord ");
         }
     } else {
         println!("Bare expr:'{}'", qstr);
