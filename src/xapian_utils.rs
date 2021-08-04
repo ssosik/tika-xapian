@@ -5,6 +5,7 @@ use nom::{
     combinator::value,
     {alt, branch::alt, complete, delimited, named, tag, take_until, value, IResult},
 };
+use std::convert::From;
 use std::fmt;
 use std::str;
 use xapian_rusty::FeatureFlag::{
@@ -77,7 +78,6 @@ pub enum MatchOp {
     Synonym,
 }
 
-use std::convert::From;
 impl From<MatchOp> for XapianOp {
     fn from(item: MatchOp) -> Self {
         match item {
@@ -99,27 +99,26 @@ impl From<MatchOp> for XapianOp {
     }
 }
 
-//use std::convert::Into;
-//impl Into<XapianOp> for MatchOp {
-//    fn into(self) -> XapianOp {
-//        match self {
-//            MatchOp::And => XapianOp::OpAnd,
-//            MatchOp::AndNot => XapianOp::OpAndNot,
-//            MatchOp::Or => XapianOp::OpOr,
-//            MatchOp::Xor => XapianOp::OpXor,
-//            MatchOp::AndMaybe => XapianOp::OpAndMaybe,
-//            MatchOp::Filter => XapianOp::OpFilter,
-//            MatchOp::Near => XapianOp::OpNear,
-//            MatchOp::Phrase => XapianOp::OpPhrase,
-//            MatchOp::ValueRange => XapianOp::OpValueRange,
-//            MatchOp::ScaleWeight => XapianOp::OpScaleWeight,
-//            MatchOp::EliteSet => XapianOp::OpEliteSet,
-//            MatchOp::ValueGe => XapianOp::OpValueGe,
-//            MatchOp::ValueLe => XapianOp::OpValueLe,
-//            MatchOp::Synonym => XapianOp::OpSynonym,
-//        }
-//    }
-//}
+impl From<XapianOp> for MatchOp {
+    fn from(item: XapianOp) -> Self {
+        match item {
+            XapianOp::OpAnd => MatchOp::And,
+            XapianOp::OpAndNot => MatchOp::AndNot,
+            XapianOp::OpOr => MatchOp::Or,
+            XapianOp::OpXor => MatchOp::Xor,
+            XapianOp::OpAndMaybe => MatchOp::AndMaybe,
+            XapianOp::OpFilter => MatchOp::Filter,
+            XapianOp::OpNear => MatchOp::Near,
+            XapianOp::OpPhrase => MatchOp::Phrase,
+            XapianOp::OpValueRange => MatchOp::ValueRange,
+            XapianOp::OpScaleWeight => MatchOp::ScaleWeight,
+            XapianOp::OpEliteSet => MatchOp::EliteSet,
+            XapianOp::OpValueGe => MatchOp::ValueGe,
+            XapianOp::OpValueLe => MatchOp::ValueLe,
+            XapianOp::OpSynonym => MatchOp::Synonym,
+        }
+    }
+}
 
 impl fmt::Display for MatchOp {
     // This trait requires `fmt` with this exact signature.
