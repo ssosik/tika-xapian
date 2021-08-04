@@ -21,11 +21,18 @@ lightly patched version of xapian-rusty, included here as a submodule.
 zlib and xapian-core, which are bundled here.
 
 
+# Tests
+
+## Interactive querying
+```bash
+make test
+```
+
 # Running
 
 ## Interactive querying
 ```bash
-DYLD_LIBRARY_PATH=xapian-core-1.4.17/.libs/ ./target/debug/xapian-rusty-test
+make run
 ```
 
 ## Indexing
@@ -35,15 +42,20 @@ DYLD_LIBRARY_PATH=xapian-core-1.4.17/.libs/ ./target/debug/xapian-rusty-test -i
 
 
 # TODO
-- Parse human-form queries: `NOT tag:work AND title:"foo bar" AND some thing`
-  using 'nom'
 - TUI select many
 - TUI preview
+- searching/jumping-to/highlighting in preview
+- pageup/down; ctrl-n/p; ctrl-w
+- TUI start list at the bottom instead of the top
 - timestamp ranges
 - Cache MD5 hashes of files using `kv` to skip indexing unchanged files
 - Keep track of access count in KV
 - Keep track of all Tags used for autocompletion
-- unit tests
 - cleanups, refactoring, rust-analyze, clippy and linting
 - statically link xapian-core
 - fix all gratuitus allows and unused imports
+- CLI option for passing in starting query for interactive mode
+- CLI option to emit JSON instead of filename
+- import man/info pages and other canonical documentation for indexing and IR
+- Add URL tag, support multiple?
+- Support multiple Author tags
