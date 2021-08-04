@@ -3,7 +3,7 @@ use color_eyre::Report;
 #[allow(unused)]
 use nom::{
     bytes::streaming::{is_not, tag, tag_no_case},
-    character::streaming::{alphanumeric0, multispace0},
+    character::streaming::{alphanumeric0, alphanumeric1, multispace0},
     combinator::value,
     multi::{many0, many1},
     sequence::{delimited, tuple},
@@ -176,18 +176,30 @@ pub type IResult<'a, O> = nom::IResult<Span<'a>, O>;
 #[allow(dead_code)]
 fn word(input: Span) -> IResult<Vec<Span>> {
     // TODO should more characters be supported on a "word"?
-    many1(alt((alphanumeric0, tag("_"))))(input)
+    many1(alt((alphanumeric1, tag("_"))))(input)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn exploration() {
-        assert_eq!(
-            word(Span::new(r#"foo bar"#)),
-            Ok((Span::new(""), vec![Span::new("")]))
-        )
+    fn test_word() {
+        //let result = word(Span::new(r#"foo"#));
+        let (remainder, matched) = word(Span::new(r#"foo bar"#)).expect("Failed to parse");
+
+
+        assert_eq!(matched.len(), 1);
+        assert_eq!(matched[0].location_offset(), 0);
+        assert_eq!(matched[0].location_line(), 1);
+        assert_eq!(matched[0].get_column(), 1);
+        assert_eq!(matched[0].fragment(), &&"foo"[..]);
+
+        // // For debugging:
+        //assert_eq!(remainder, Span::new(" bar"));
+        assert_eq!(remainder.location_offset(), 3);
+        assert_eq!(remainder.location_line(), 1);
+        assert_eq!(remainder.get_column(), 4);
+        assert_eq!(remainder.fragment(), &&" bar"[..]);
     }
 }
 
