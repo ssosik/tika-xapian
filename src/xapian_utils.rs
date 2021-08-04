@@ -13,7 +13,7 @@ use xapian_rusty::FeatureFlag::{
 use xapian_rusty::{Database, Query, QueryParser, Stem, XapianOp, DB_CREATE_OR_OVERWRITE};
 
 // Xapian tags in human format, e.g. "author;" or "title:"
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum XapianTag {
     Author,
     Date,
@@ -38,15 +38,15 @@ impl XapianTag {
     }
 }
 
-pub fn match_xapiantag(input: &str) -> IResult<&str, &XapianTag> {
+pub fn match_xapiantag(input: &str) -> IResult<&str, XapianTag> {
     alt((
-        value(&XapianTag::Author, tag("author:")),
-        value(&XapianTag::Date, tag("date:")),
-        value(&XapianTag::Filename, tag("filename:")),
-        value(&XapianTag::Fullpath, tag("fullpath:")),
-        value(&XapianTag::Title, tag("title:")),
-        value(&XapianTag::Subtitle, tag("subtitle:")),
-        value(&XapianTag::Tag, tag("tag:")),
+        value(XapianTag::Author, tag_no_case("author:")),
+        value(XapianTag::Date, tag_no_case("date:")),
+        value(XapianTag::Filename, tag_no_case("filename:")),
+        value(XapianTag::Fullpath, tag_no_case("fullpath:")),
+        value(XapianTag::Title, tag_no_case("title:")),
+        value(XapianTag::Subtitle, tag_no_case("subtitle:")),
+        value(XapianTag::Tag, tag_no_case("tag:")),
     ))(input)
 }
 
@@ -62,6 +62,89 @@ named!(
             | value!(XapianTag::Tag, tag!("tag:"))
     ))
 );
+
+// Local representation of xapian expression operators, most notably these are Copy!
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum MatchOp {
+    And,
+    AndNot,
+    Or,
+    Xor,
+    AndMaybe,
+    Filter,
+    Near,
+    Phrase,
+    ValueRange,
+    ScaleWeight,
+    EliteSet,
+    ValueGe,
+    ValueLe,
+    Synonym,
+}
+
+use std::convert::From;
+impl From<XapianOp> for MatchOp {
+    fn from(item: XapianOp) -> Self {
+        match item {
+            XapianOp::OpAnd => MatchOp::And,
+            XapianOp::OpAndNot => MatchOp::AndNot,
+            XapianOp::OpOr => MatchOp::Or,
+            XapianOp::OpXor => MatchOp::Xor,
+            XapianOp::OpAndMaybe => MatchOp::AndMaybe,
+            XapianOp::OpFilter => MatchOp::Filter,
+            XapianOp::OpNear => MatchOp::Near,
+            XapianOp::OpPhrase => MatchOp::Phrase,
+            XapianOp::OpValueRange => MatchOp::ValueRange,
+            XapianOp::OpScaleWeight => MatchOp::ScaleWeight,
+            XapianOp::OpEliteSet => MatchOp::EliteSet,
+            XapianOp::OpValueGe => MatchOp::ValueGe,
+            XapianOp::OpValueLe => MatchOp::ValueLe,
+            XapianOp::OpSynonym => MatchOp::Synonym,
+        }
+    }
+}
+
+use std::fmt;
+impl fmt::Display for MatchOp {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            MatchOp::And => write!(f, "<And>"),
+            MatchOp::AndNot => write!(f, "<AndNot>"),
+            MatchOp::Or => write!(f, "<Or>"),
+            MatchOp::Xor => write!(f, "<Xor>"),
+            MatchOp::AndMaybe => write!(f, "<AndMaybe>"),
+            MatchOp::Filter => write!(f, "<Filter>"),
+            MatchOp::Near => write!(f, "<Near>"),
+            MatchOp::Phrase => write!(f, "<Phrase>"),
+            MatchOp::ValueRange => write!(f, "<ValueRange>"),
+            MatchOp::ScaleWeight => write!(f, "<ScaleWeight>"),
+            MatchOp::EliteSet => write!(f, "<EliteSet>"),
+            MatchOp::ValueGe => write!(f, "<ValueGe>"),
+            MatchOp::ValueLe => write!(f, "<ValueLe>"),
+            MatchOp::Synonym => write!(f, "<Synonym>"),
+        }
+    }
+}
+
+pub fn match_op3(input: &str) -> IResult<&str, MatchOp> {
+    alt((
+        value(MatchOp::AndNot, tag_no_case("AND NOT")),
+        value(MatchOp::And, tag_no_case("AND")),
+        value(MatchOp::Xor, tag_no_case("XOR")),
+        value(MatchOp::Or, tag_no_case("OR")),
+        value(MatchOp::AndMaybe, tag_no_case("AND MAYBE")),
+        value(MatchOp::Filter, tag_no_case("FILTER")),
+        value(MatchOp::Near, tag_no_case("NEAR")),
+        value(MatchOp::Phrase, tag_no_case("PHRASE")),
+        value(MatchOp::ValueRange, tag_no_case("RANGE")),
+        value(MatchOp::ScaleWeight, tag_no_case("SCALED")),
+        value(MatchOp::EliteSet, tag_no_case("ELITE")),
+        value(MatchOp::ValueGe, tag_no_case(">")),
+        value(MatchOp::ValueLe, tag_no_case("<")),
+        value(MatchOp::Synonym, tag_no_case("SYNONYM")),
+    ))(input)
+}
 
 pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
     // Note 1:
@@ -247,10 +330,8 @@ pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
     } else if let Ok((a, b)) = operator_expr(qstr.as_bytes()) {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
-        println!("Operator a:'{}' b:'{}'", b, a);
-        if let Ok((s, op)) = match_op2(b.as_bytes()) {
-            let s = str::from_utf8(s).unwrap();
-            let op = str::from_utf8(op).unwrap();
+        println!("Operator a:'{}' b:'{}'", a, b);
+        if let Ok((s, op)) = match_op3(a) {
             println!("Operator: {} {}", op, s);
         } else {
             println!("NoOperator");

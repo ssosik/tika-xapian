@@ -133,6 +133,8 @@ fn main() -> Result<(), Report> {
     xapian_utils::test_user_query(r#"AND NOT vkms"#)?;
     println!("2:");
     xapian_utils::test_user_query(r#"foobar AND NOT vkms"#)?;
+    println!("2A:");
+    xapian_utils::test_user_query(r#"foobar AND vkms"#)?;
     println!("3:");
     xapian_utils::test_user_query(r#"foobar vkms"#)?;
     println!("4:");
