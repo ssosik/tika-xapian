@@ -131,22 +131,22 @@ fn main() -> Result<(), Report> {
 
     println!("1:");
     xapian_utils::test_user_query(r#"AND NOT vkms"#)?;
-    println!("2:");
-    xapian_utils::test_user_query(r#"foobar AND NOT vkms"#)?;
-    println!("2A:");
-    xapian_utils::test_user_query(r#"foobar AND vkms"#)?;
-    println!("3:");
-    xapian_utils::test_user_query(r#"foobar vkms"#)?;
-    println!("4:");
-    xapian_utils::test_user_query(r#"title:foobar vkms"#)?;
-    println!("5:");
-    xapian_utils::test_user_query(r#""foobar vkms""#)?;
-    println!("6:");
-    xapian_utils::test_user_query(r#"title:"foobar vkms""#)?;
-    println!("7:");
-    xapian_utils::test_user_query(r#""foobar vkms" chunk"#)?;
-    println!("8:");
-    xapian_utils::test_user_query(r#"foobar vkms > chunk"#)?;
+    //println!("2:");
+    //xapian_utils::test_user_query(r#"foobar AND NOT vkms"#)?;
+    //println!("2A:");
+    //xapian_utils::test_user_query(r#"foobar AND vkms"#)?;
+    //println!("3:");
+    //xapian_utils::test_user_query(r#"foobar vkms"#)?;
+    //println!("4:");
+    //xapian_utils::test_user_query(r#"title:foobar vkms"#)?;
+    //println!("5:");
+    //xapian_utils::test_user_query(r#""foobar vkms""#)?;
+    //println!("6:");
+    //xapian_utils::test_user_query(r#"title:"foobar vkms""#)?;
+    //println!("7:");
+    //xapian_utils::test_user_query(r#""foobar vkms" chunk"#)?;
+    //println!("8:");
+    //xapian_utils::test_user_query(r#"foobar vkms > chunk"#)?;
 
     //let q = xapian_utils::parse_user_query(r#"aaabcde c AND NOT vkms"#)?;
     //let q = xapian_utils::parse_user_query(r#"foobar AND NOT vkms"#)?;
@@ -156,11 +156,11 @@ fn main() -> Result<(), Report> {
     //println!("Result {:?}", xapian_utils::query_db(q)?);
 
     ////let result = interactive_query();
-    //let mut iter = IntoIterator::into_iter(tui_app::interactive_query()?); // strings is moved here
-    //while let Some(s) = iter.next() {
-    //    // next() moves a string out of the iter
-    //    println!("{}", s);
-    //}
+    let mut iter = IntoIterator::into_iter(tui_app::interactive_query()?); // strings is moved here
+    while let Some(s) = iter.next() {
+        // next() moves a string out of the iter
+        println!("{}", s);
+    }
 
     Ok(())
 }

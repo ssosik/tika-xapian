@@ -1,5 +1,6 @@
 use crate::tika_document::TikaDocument;
 use color_eyre::Report;
+#[allow(unused)]
 use nom::{
     bytes::streaming::{is_not, tag, tag_no_case},
     character::streaming::{alphanumeric0, multispace0},
@@ -166,6 +167,7 @@ pub fn matchop(input: &str) -> IResult<&str, MatchOp> {
     ))(input)
 }
 
+#[allow(dead_code)]
 fn word(input: &str) -> IResult<&str, Vec<&str>> {
     // TODO should more characters be supported on a "word"?
     many1(alt((alphanumeric0, tag("_"))))(input)
@@ -176,7 +178,7 @@ mod tests {
     use super::*;
     #[test]
     fn exploration() {
-        assert_eq!(word(r#"foobar"#), Ok(("", vec![])))
+        assert_eq!(word(r#"foo bar"#), Ok(("", vec![])))
     }
 }
 
