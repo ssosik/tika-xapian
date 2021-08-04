@@ -1,8 +1,11 @@
 use crate::tika_document::TikaDocument;
 use color_eyre::Report;
 use nom::{
-    bytes::complete::{is_not, tag, tag_no_case},
+    bytes::streaming::{is_not, tag, tag_no_case},
+    character::streaming::{alphanumeric0, multispace0},
     combinator::value,
+    multi::{many0, many1},
+    sequence::{delimited, tuple},
     {alt, branch::alt, complete, delimited, named, tag, take_until, value, IResult},
 };
 use std::convert::From;
@@ -14,7 +17,10 @@ use xapian_rusty::FeatureFlag::{
 };
 use xapian_rusty::{Database, Query, QueryParser, Stem, XapianOp, DB_CREATE_OR_OVERWRITE};
 
-// Xapian tags in human format, e.g. "author;" or "title:"
+// The most helpful write-up on using Nom that I've seen so far:
+//   https://iximiuz.com/en/posts/rust-writing-parsers-with-nom/
+
+// Xapian tags in human format, e.g. "author:" or "title:"
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum XapianTag {
     Author,
@@ -41,13 +47,12 @@ impl XapianTag {
 }
 
 impl fmt::Display for XapianTag {
-    // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "<{}>", self.to_xapian())
     }
 }
 
-pub fn match_xapiantag(input: &str) -> IResult<&str, XapianTag> {
+pub fn xapiantag(input: &str) -> IResult<&str, XapianTag> {
     alt((
         value(XapianTag::Author, tag_no_case("author:")),
         value(XapianTag::Date, tag_no_case("date:")),
@@ -78,6 +83,7 @@ pub enum MatchOp {
     Synonym,
 }
 
+// Support converting into and from XapianOps
 impl From<MatchOp> for XapianOp {
     fn from(item: MatchOp) -> Self {
         match item {
@@ -141,7 +147,7 @@ impl fmt::Display for MatchOp {
     }
 }
 
-pub fn match_op(input: &str) -> IResult<&str, MatchOp> {
+pub fn matchop(input: &str) -> IResult<&str, MatchOp> {
     alt((
         value(MatchOp::AndNot, tag_no_case("AND NOT")),
         value(MatchOp::And, tag_no_case("AND")),
@@ -159,6 +165,27 @@ pub fn match_op(input: &str) -> IResult<&str, MatchOp> {
         value(MatchOp::Synonym, tag_no_case("SYNONYM")),
     ))(input)
 }
+
+fn word(input: &str) -> IResult<&str, Vec<&str>> {
+    // TODO should more characters be supported on a "word"?
+    many1(alt((alphanumeric0, tag("_"))))(input)
+}
+
+//fn words(input: &str) -> IResult<&str, Vec<&str>> {
+//    many1(alt((multispace0, word)))(input)
+//}
+//
+//fn quoted(input: &str) -> IResult<&str, Vec<&str>> {
+//    delimited(tag(r#"""#), words, tag(r#"""#))(input)
+//}
+//
+//fn tagged(input: &str) -> IResult<&str, Vec<(Vec<&str>, &str, Vec<&str>)>> {
+//    many1(tuple((word, tag(":"), alt((word, quoted)))))(input)
+//}
+//
+//fn expression(input: &str) -> IResult<&str, (Vec<&str>, MatchOp, Vec<&str>)> {
+//    tuple((word, matchop, alt((word, quoted))))(input)
+//}
 
 // TODO is there a better way to handle case insensitity here?
 named!(
@@ -223,7 +250,7 @@ pub fn test_user_query(qstr: &str) -> Result<(), Report> {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
         println!("TagDoubleQuoted a:'{}' b:'{}'", a, b);
-        if let Ok((s, tag)) = match_xapiantag(b) {
+        if let Ok((s, tag)) = xapiantag(b) {
             println!("TagDoubleQuoted: {} {} {}", a, tag, s);
         } else {
             println!("NoTagDoubleQuoted");
@@ -231,7 +258,7 @@ pub fn test_user_query(qstr: &str) -> Result<(), Report> {
     } else if let Ok((a, b)) = operator_expr(qstr.as_bytes()) {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
-        if let Ok((s, op)) = match_op(a) {
+        if let Ok((s, op)) = matchop(a) {
             println!("Operator: {} {} {}", b, op, s);
         } else {
             println!("NoOperator");
@@ -240,7 +267,7 @@ pub fn test_user_query(qstr: &str) -> Result<(), Report> {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
         println!("TagWord a:'{}' b:'{}'", a, b);
-        if let Ok((s, tag)) = match_xapiantag(b) {
+        if let Ok((s, tag)) = xapiantag(b) {
             println!("TagWord : {} {} {}", a, tag, s);
         } else {
             println!("NoTagWord ");
@@ -321,7 +348,7 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
         };
 
         //println!("MATCH OP: {}", qstr);
-        match match_op(&qstr) {
+        match matchop(&qstr) {
             Ok((remaining, op)) => {
                 // Convert MatchOp into Some(XapianOp)
                 operator = Some(op.into());
@@ -576,4 +603,3 @@ fn perform_query_canned() -> Result<(), Report> {
 //        return Ok(self);
 //    }
 //}
-
