@@ -145,6 +145,8 @@ fn main() -> Result<(), Report> {
     xapian_utils::test_user_query(r#"title:"foobar vkms""#)?;
     println!("7:");
     xapian_utils::test_user_query(r#""foobar vkms" chunk"#)?;
+    println!("8:");
+    xapian_utils::test_user_query(r#"foobar vkms > chunk"#)?;
 
     //let q = xapian_utils::parse_user_query(r#"aaabcde c AND NOT vkms"#)?;
     //let q = xapian_utils::parse_user_query(r#"foobar AND NOT vkms"#)?;

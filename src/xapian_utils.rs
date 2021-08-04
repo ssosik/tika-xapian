@@ -58,18 +58,18 @@ pub fn match_xapiantag(input: &str) -> IResult<&str, XapianTag> {
     ))(input)
 }
 
-named!(
-    match_xapiantag2,
-    recognize!(alt!(
-        value!(XapianTag::Author, tag!("author:"))
-            | value!(XapianTag::Date, tag!("date:"))
-            | value!(XapianTag::Filename, tag!("filename:"))
-            | value!(XapianTag::Fullpath, tag!("fullpath:"))
-            | value!(XapianTag::Title, tag!("title:"))
-            | value!(XapianTag::Subtitle, tag!("subtitle:"))
-            | value!(XapianTag::Tag, tag!("tag:"))
-    ))
-);
+//named!(
+//    match_xapiantag2,
+//    recognize!(alt!(
+//        value!(XapianTag::Author, tag!("author:"))
+//            | value!(XapianTag::Date, tag!("date:"))
+//            | value!(XapianTag::Filename, tag!("filename:"))
+//            | value!(XapianTag::Fullpath, tag!("fullpath:"))
+//            | value!(XapianTag::Title, tag!("title:"))
+//            | value!(XapianTag::Subtitle, tag!("subtitle:"))
+//            | value!(XapianTag::Tag, tag!("tag:"))
+//    ))
+//);
 
 // Local representation of xapian expression operators, most notably these are Copy!
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -112,6 +112,28 @@ impl From<XapianOp> for MatchOp {
     }
 }
 
+use std::convert::Into;
+impl Into<XapianOp> for MatchOp {
+    fn into(self) -> XapianOp {
+        match self {
+            MatchOp::And => XapianOp::OpAnd,
+            MatchOp::AndNot => XapianOp::OpAndNot,
+            MatchOp::Or => XapianOp::OpOr,
+            MatchOp::Xor => XapianOp::OpXor,
+            MatchOp::AndMaybe => XapianOp::OpAndMaybe,
+            MatchOp::Filter => XapianOp::OpFilter,
+            MatchOp::Near => XapianOp::OpNear,
+            MatchOp::Phrase => XapianOp::OpPhrase,
+            MatchOp::ValueRange => XapianOp::OpValueRange,
+            MatchOp::ScaleWeight => XapianOp::OpScaleWeight,
+            MatchOp::EliteSet => XapianOp::OpEliteSet,
+            MatchOp::ValueGe => XapianOp::OpValueGe,
+            MatchOp::ValueLe => XapianOp::OpValueLe,
+            MatchOp::Synonym => XapianOp::OpSynonym,
+        }
+    }
+}
+
 impl fmt::Display for MatchOp {
     // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -134,7 +156,7 @@ impl fmt::Display for MatchOp {
     }
 }
 
-pub fn match_op3(input: &str) -> IResult<&str, MatchOp> {
+pub fn match_op(input: &str) -> IResult<&str, MatchOp> {
     alt((
         value(MatchOp::AndNot, tag_no_case("AND NOT")),
         value(MatchOp::And, tag_no_case("AND")),
@@ -153,41 +175,41 @@ pub fn match_op3(input: &str) -> IResult<&str, MatchOp> {
     ))(input)
 }
 
-pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
-    // Note 1:
-    // From https://github.com/Geal/nom/blob/master/doc/choosing_a_combinator.md
-    // Note that case insensitive comparison is not well defined for unicode,
-    // and that you might have bad surprises
-    // Note 2:
-    // Order these by longest match, according to
-    // https://docs.rs/nom/6.2.1/nom/macro.alt.html#behaviour-of-alt
-    alt((
-        value(&XapianOp::OpAndNot, tag_no_case("AND NOT")),
-        value(&XapianOp::OpAnd, tag_no_case("AND")),
-        value(&XapianOp::OpXor, tag_no_case("XOR")),
-        value(&XapianOp::OpOr, tag_no_case("OR")),
-        // OpAndMaybe,
-        // OpFilter,
-        // OpNear,
-        // OpPhrase,
-        // OpValueRange,
-        // OpScaleWeight,
-        // OpEliteSet,
-        // OpValueGe,
-        // OpValueLe,
-        // OpSynonym,
-    ))(input)
-}
+//pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
+//    // Note 1:
+//    // From https://github.com/Geal/nom/blob/master/doc/choosing_a_combinator.md
+//    // Note that case insensitive comparison is not well defined for unicode,
+//    // and that you might have bad surprises
+//    // Note 2:
+//    // Order these by longest match, according to
+//    // https://docs.rs/nom/6.2.1/nom/macro.alt.html#behaviour-of-alt
+//    alt((
+//        value(&XapianOp::OpAndNot, tag_no_case("AND NOT")),
+//        value(&XapianOp::OpAnd, tag_no_case("AND")),
+//        value(&XapianOp::OpXor, tag_no_case("XOR")),
+//        value(&XapianOp::OpOr, tag_no_case("OR")),
+//        // OpAndMaybe,
+//        // OpFilter,
+//        // OpNear,
+//        // OpPhrase,
+//        // OpValueRange,
+//        // OpScaleWeight,
+//        // OpEliteSet,
+//        // OpValueGe,
+//        // OpValueLe,
+//        // OpSynonym,
+//    ))(input)
+//}
 
-named!(
-    match_op2,
-    recognize!(alt!(
-        value!(&XapianOp::OpAndNot, tag_no_case("AND NOT"))
-            | value!(&XapianOp::OpAnd, tag_no_case("AND"))
-            | value!(&XapianOp::OpXor, tag_no_case("XOR"))
-            | value!(&XapianOp::OpOr, tag_no_case("OR"))
-    ))
-);
+//named!(
+//    match_op2,
+//    recognize!(alt!(
+//        value!(&XapianOp::OpAndNot, tag_no_case("AND NOT"))
+//            | value!(&XapianOp::OpAnd, tag_no_case("AND"))
+//            | value!(&XapianOp::OpXor, tag_no_case("XOR"))
+//            | value!(&XapianOp::OpOr, tag_no_case("OR"))
+//    ))
+//);
 
 // TODO is there a better way to handle case insensitity here?
 named!(
@@ -327,9 +349,7 @@ pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
         println!("TagDoubleQuoted a:'{}' b:'{}'", a, b);
-        if let Ok((s, tag)) = match_xapiantag2(b.as_bytes()) {
-            let s = str::from_utf8(s).unwrap();
-            let tag = str::from_utf8(tag).unwrap();
+        if let Ok((s, tag)) = match_xapiantag(b) {
             println!("TagDoubleQuoted: {} {} {}", a, tag, s);
         } else {
             println!("NoTagDoubleQuoted");
@@ -337,7 +357,7 @@ pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
     } else if let Ok((a, b)) = operator_expr(qstr.as_bytes()) {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
-        if let Ok((s, op)) = match_op3(a) {
+        if let Ok((s, op)) = match_op(a) {
             println!("Operator: {} {} {}", b, op, s);
         } else {
             println!("NoOperator");
@@ -374,7 +394,8 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
 
     // Accumulators, start them off as empty options
     let mut query: Option<Query> = None;
-    let mut operator: Option<&XapianOp> = None;
+    //let mut operator: Option<&XapianOp> = None;
+    let mut operator: Option<XapianOp> = None;
     //let mut accumulator = QueryParseState::new();
 
     while qstr.len() > 0 {
@@ -392,34 +413,11 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
                     //println!("parsed query string '{}'", curr_query);
                     query = Some(q);
                 } else {
-                    let op = match operator {
-                        Some(&XapianOp::OpAndNot) => {
-                            //println!("Use Operator And Not");
-                            XapianOp::OpAndNot
-                        }
-                        Some(&XapianOp::OpAnd) => {
-                            //println!("Use Operator And");
-                            XapianOp::OpAnd
-                        }
-                        Some(&XapianOp::OpXor) => {
-                            //println!("Use Operator Xor");
-                            XapianOp::OpXor
-                        }
-                        Some(&XapianOp::OpOr) => {
-                            //println!("Use Operator Or");
-                            XapianOp::OpOr
-                        }
-                        _ => {
-                            eprintln!("Found unsupported Xapian Operation");
-                            XapianOp::OpAnd
-                        }
-                    };
-
                     //println!("appended query string {}", curr_query);
                     query = Some(
                         query
                             .unwrap()
-                            .add_right(op, &mut qp.parse_query(curr_query, flags)?)
+                            .add_right(operator.unwrap(), &mut qp.parse_query(curr_query, flags)?)
                             .expect("Failed to add_right()"),
                     );
                 }
@@ -437,34 +435,11 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
                     //println!("parsed query string '{}'", qstr);
                     query = Some(q);
                 } else {
-                    let op = match operator {
-                        Some(&XapianOp::OpAndNot) => {
-                            //println!("No more operators: Use Operator And Not");
-                            XapianOp::OpAndNot
-                        }
-                        Some(&XapianOp::OpAnd) => {
-                            //println!("No more operators: Use Operator And");
-                            XapianOp::OpAnd
-                        }
-                        Some(&XapianOp::OpXor) => {
-                            //println!("No more operators: Use Operator Xor");
-                            XapianOp::OpXor
-                        }
-                        Some(&XapianOp::OpOr) => {
-                            //println!("No more operators: Use Operator Or");
-                            XapianOp::OpOr
-                        }
-                        _ => {
-                            //eprintln!("No more operators: Found unsupported Xapian Operation");
-                            XapianOp::OpAnd
-                        }
-                    };
-
                     //println!("No more operators: appended query string {}", qstr);
                     query = Some(
                         query
                             .unwrap()
-                            .add_right(op, &mut qp.parse_query(qstr, flags)?)
+                            .add_right(operator.unwrap(), &mut qp.parse_query(qstr, flags)?)
                             .expect("No more operators: Failed to add_right()"),
                     );
                 }
@@ -474,28 +449,7 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
         //println!("MATCH OP: {}", qstr);
         match match_op(&qstr) {
             Ok((remaining, op)) => {
-                operator = match op {
-                    XapianOp::OpAndNot => {
-                        //println!("Set Operator And Not");
-                        Some(&XapianOp::OpAndNot)
-                    }
-                    XapianOp::OpAnd => {
-                        //println!("Set Operator And");
-                        Some(&XapianOp::OpAnd)
-                    }
-                    XapianOp::OpXor => {
-                        //println!("Set Operator Xor");
-                        Some(&XapianOp::OpXor)
-                    }
-                    XapianOp::OpOr => {
-                        //println!("Set Operator Or");
-                        Some(&XapianOp::OpOr)
-                    }
-                    _ => {
-                        //eprintln!("Found unsupported Xapian Operation");
-                        Some(&XapianOp::OpAnd)
-                    }
-                };
+                operator = Some(op.into());
                 qstr = remaining
             }
             Err(_) => {
