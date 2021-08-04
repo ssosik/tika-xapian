@@ -3,7 +3,7 @@ use color_eyre::Report;
 #[allow(unused)]
 use nom::{
     bytes::streaming::{is_not, tag, tag_no_case},
-    character::streaming::{alphanumeric0, alphanumeric1, multispace0},
+    character::streaming::{alphanumeric0, alphanumeric1, space0, multispace0},
     combinator::value,
     multi::{many0, many1},
     sequence::{delimited, tuple},
@@ -189,6 +189,7 @@ mod tests {
         let res = word(Span::new(r#"foo"#));
         assert!(res.is_err())
     }
+
     #[test]
     fn test_word_on_one_word_with_trailing_space() {
         let (remainder, matched) = word(Span::new(r#"foo "#)).expect("Failed to parse input");
@@ -202,6 +203,24 @@ mod tests {
         // // For debugging:
         //assert_eq!(remainder, Span::new(" bar"));
         assert_eq!(remainder.fragment(), &&" "[..]);
+        assert_eq!(remainder.location_offset(), 3);
+        assert_eq!(remainder.location_line(), 1);
+        assert_eq!(remainder.get_column(), 4);
+    }
+
+    #[test]
+    fn test_word_on_one_word_with_trailing_newline() {
+        let (remainder, matched) = word(Span::new(r#"foo\n"#)).expect("Failed to parse input");
+
+        assert_eq!(matched.len(), 1);
+        assert_eq!(matched[0].fragment(), &&"foo"[..]);
+        assert_eq!(matched[0].location_offset(), 0);
+        assert_eq!(matched[0].location_line(), 1);
+        assert_eq!(matched[0].get_column(), 1);
+
+        // // For debugging:
+        //assert_eq!(remainder, Span::new(" bar"));
+        assert_eq!(remainder.fragment(), &&"\\n"[..]);
         assert_eq!(remainder.location_offset(), 3);
         assert_eq!(remainder.location_line(), 1);
         assert_eq!(remainder.get_column(), 4);
@@ -224,10 +243,10 @@ mod tests {
     }
 }
 
-//fn words(input: &str) -> IResult<&str, Vec<&str>> {
-//    many1(alt((multispace0, word)))(input)
+//fn words(input: Span) -> IResult<Vec<Span>> {
+//    many1(alt((space0, word)))(input)
 //}
-//
+
 //fn quoted(input: &str) -> IResult<&str, Vec<&str>> {
 //    delimited(tag(r#"""#), words, tag(r#"""#))(input)
 //}
