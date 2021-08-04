@@ -53,13 +53,13 @@ pub fn match_xapiantag(input: &str) -> IResult<&str, &XapianTag> {
 named!(
     match_xapiantag2,
     recognize!(alt!(
-            value!(XapianTag::Author, tag!("author:")) |
-            value!(XapianTag::Date, tag!("date:")) |
-            value!(XapianTag::Filename, tag!("filename:")) |
-            value!(XapianTag::Fullpath, tag!("fullpath:")) |
-            value!(XapianTag::Title, tag!("title:")) |
-            value!(XapianTag::Subtitle, tag!("subtitle:")) |
-            value!(XapianTag::Tag, tag!("tag:"))
+        value!(XapianTag::Author, tag!("author:"))
+            | value!(XapianTag::Date, tag!("date:"))
+            | value!(XapianTag::Filename, tag!("filename:"))
+            | value!(XapianTag::Fullpath, tag!("fullpath:"))
+            | value!(XapianTag::Title, tag!("title:"))
+            | value!(XapianTag::Subtitle, tag!("subtitle:"))
+            | value!(XapianTag::Tag, tag!("tag:"))
     ))
 );
 
@@ -88,6 +88,16 @@ pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
         // OpSynonym,
     ))(input)
 }
+
+named!(
+    match_op2,
+    recognize!(alt!(
+        value!(&XapianOp::OpAndNot, tag_no_case("AND NOT"))
+            | value!(&XapianOp::OpAnd, tag_no_case("AND"))
+            | value!(&XapianOp::OpXor, tag_no_case("XOR"))
+            | value!(&XapianOp::OpOr, tag_no_case("OR"))
+    ))
+);
 
 // TODO is there a better way to handle case insensitity here?
 named!(
@@ -228,8 +238,8 @@ pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
         let b = str::from_utf8(b).unwrap();
         println!("TagDoubleQuoted a:'{}' b:'{}'", a, b);
         if let Ok((s, tag)) = match_xapiantag2(b.as_bytes()) {
-        let s = str::from_utf8(s).unwrap();
-        let tag = str::from_utf8(tag).unwrap();
+            let s = str::from_utf8(s).unwrap();
+            let tag = str::from_utf8(tag).unwrap();
             println!("Tag: {} {}", tag, s);
         } else {
             println!("NoTag");
@@ -238,11 +248,13 @@ pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
         println!("Operator a:'{}' b:'{}'", b, a);
-        //if let Ok((s, op)) = match_op(b) {
-        //    println!("Operator: {} {}", op as i32, s);
-        //} else {
-        //    println!("NoOperator");
-        //}
+        if let Ok((s, op)) = match_op2(b.as_bytes()) {
+            let s = str::from_utf8(s).unwrap();
+            let op = str::from_utf8(op).unwrap();
+            println!("Operator: {} {}", op, s);
+        } else {
+            println!("NoOperator");
+        }
     } else if let Ok((a, b)) = tagword(qstr.as_bytes()) {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
