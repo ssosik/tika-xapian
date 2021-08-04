@@ -121,7 +121,6 @@ impl From<XapianOp> for MatchOp {
 }
 
 impl fmt::Display for MatchOp {
-    // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             MatchOp::And => write!(f, "<And>"),
@@ -161,42 +160,6 @@ pub fn match_op(input: &str) -> IResult<&str, MatchOp> {
     ))(input)
 }
 
-//pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
-//    // Note 1:
-//    // From https://github.com/Geal/nom/blob/master/doc/choosing_a_combinator.md
-//    // Note that case insensitive comparison is not well defined for unicode,
-//    // and that you might have bad surprises
-//    // Note 2:
-//    // Order these by longest match, according to
-//    // https://docs.rs/nom/6.2.1/nom/macro.alt.html#behaviour-of-alt
-//    alt((
-//        value(&XapianOp::OpAndNot, tag_no_case("AND NOT")),
-//        value(&XapianOp::OpAnd, tag_no_case("AND")),
-//        value(&XapianOp::OpXor, tag_no_case("XOR")),
-//        value(&XapianOp::OpOr, tag_no_case("OR")),
-//        // OpAndMaybe,
-//        // OpFilter,
-//        // OpNear,
-//        // OpPhrase,
-//        // OpValueRange,
-//        // OpScaleWeight,
-//        // OpEliteSet,
-//        // OpValueGe,
-//        // OpValueLe,
-//        // OpSynonym,
-//    ))(input)
-//}
-
-//named!(
-//    match_op2,
-//    recognize!(alt!(
-//        value!(&XapianOp::OpAndNot, tag_no_case("AND NOT"))
-//            | value!(&XapianOp::OpAnd, tag_no_case("AND"))
-//            | value!(&XapianOp::OpXor, tag_no_case("XOR"))
-//            | value!(&XapianOp::OpOr, tag_no_case("OR"))
-//    ))
-//);
-
 // TODO is there a better way to handle case insensitity here?
 named!(
     take_up_to_operator,
@@ -211,81 +174,6 @@ named!(
             | complete!(take_until!("or"))
     )
 );
-
-//struct QueryParseState {
-//    query: Option<Query>,
-//    operator: Option<i32>,
-//}
-//
-//impl QueryParseState {
-//    fn new<'a>() -> &'a QueryParseState {
-//        &QueryParseState {
-//            query: None,
-//            operator: None,
-//        }
-//    }
-//
-//    fn operator(self) -> XapianOp {
-//        return match self.operator {
-//            x if x.unwrap() == XapianOp::OpAnd as i32 => XapianOp::OpAnd,
-//            x if x.unwrap() == XapianOp::OpAndNot as i32 => XapianOp::OpAndNot,
-//            x if x.unwrap() == XapianOp::OpXor as i32 => XapianOp::OpXor,
-//            x if x.unwrap() == XapianOp::OpOr as i32 => XapianOp::OpOr,
-//            _ => unreachable!(),
-//        };
-//    }
-//
-//    fn update_query<'a>(
-//        mut self,
-//        mut qp: QueryParser,
-//        flags: i16,
-//        qstr: &str,
-//    ) -> Result<QueryParseState, Report> {
-//        if self.query.is_none() {
-//            self.query = Some(
-//                qp.parse_query(qstr, flags)
-//                    .expect("No more operators: QueryParser error"),
-//            );
-//        } else {
-//            self.query = Some(
-//                self.query
-//                    .unwrap()
-//                    .add_right(self.operator(), &mut qp.parse_query(qstr, flags)?)
-//                    .expect("No more operators: Failed to add_right()"),
-//            );
-//        }
-//        return Ok(self);
-//    }
-//
-//    fn update_operator<'a>(
-//        mut self,
-//        qp: QueryParser,
-//        operator: XapianOp,
-//    ) -> Result<QueryParseState, Report> {
-//        self.operator = match operator {
-//            XapianOp::OpAndNot => {
-//                //println!("No more operators: Use Operator And Not");
-//                Some(XapianOp::OpAndNot as i32)
-//            }
-//            XapianOp::OpAnd => {
-//                //println!("No more operators: Use Operator And");
-//                Some(XapianOp::OpAnd as i32)
-//            }
-//            XapianOp::OpXor => {
-//                //println!("No more operators: Use Operator Xor");
-//                Some(XapianOp::OpXor as i32)
-//            }
-//            XapianOp::OpOr => {
-//                //println!("No more operators: Use Operator Or");
-//                Some(XapianOp::OpOr as i32)
-//            }
-//            _ => {
-//                panic!("No more operators: Found unsupported Xapian Operation");
-//            }
-//        };
-//        return Ok(self);
-//    }
-//}
 
 use nom::is_not;
 use nom::recognize;
@@ -577,3 +465,115 @@ fn perform_query_canned() -> Result<(), Report> {
 //            | value!(XapianTag::Tag, tag!("tag:"))
 //    ))
 //);
+//
+//pub fn match_op(input: &str) -> IResult<&str, &XapianOp> {
+//    // Note 1:
+//    // From https://github.com/Geal/nom/blob/master/doc/choosing_a_combinator.md
+//    // Note that case insensitive comparison is not well defined for unicode,
+//    // and that you might have bad surprises
+//    // Note 2:
+//    // Order these by longest match, according to
+//    // https://docs.rs/nom/6.2.1/nom/macro.alt.html#behaviour-of-alt
+//    alt((
+//        value(&XapianOp::OpAndNot, tag_no_case("AND NOT")),
+//        value(&XapianOp::OpAnd, tag_no_case("AND")),
+//        value(&XapianOp::OpXor, tag_no_case("XOR")),
+//        value(&XapianOp::OpOr, tag_no_case("OR")),
+//        // OpAndMaybe,
+//        // OpFilter,
+//        // OpNear,
+//        // OpPhrase,
+//        // OpValueRange,
+//        // OpScaleWeight,
+//        // OpEliteSet,
+//        // OpValueGe,
+//        // OpValueLe,
+//        // OpSynonym,
+//    ))(input)
+//}
+
+//named!(
+//    match_op2,
+//    recognize!(alt!(
+//        value!(&XapianOp::OpAndNot, tag_no_case("AND NOT"))
+//            | value!(&XapianOp::OpAnd, tag_no_case("AND"))
+//            | value!(&XapianOp::OpXor, tag_no_case("XOR"))
+//            | value!(&XapianOp::OpOr, tag_no_case("OR"))
+//    ))
+//);
+
+//struct QueryParseState {
+//    query: Option<Query>,
+//    operator: Option<i32>,
+//}
+//
+//impl QueryParseState {
+//    fn new<'a>() -> &'a QueryParseState {
+//        &QueryParseState {
+//            query: None,
+//            operator: None,
+//        }
+//    }
+//
+//    fn operator(self) -> XapianOp {
+//        return match self.operator {
+//            x if x.unwrap() == XapianOp::OpAnd as i32 => XapianOp::OpAnd,
+//            x if x.unwrap() == XapianOp::OpAndNot as i32 => XapianOp::OpAndNot,
+//            x if x.unwrap() == XapianOp::OpXor as i32 => XapianOp::OpXor,
+//            x if x.unwrap() == XapianOp::OpOr as i32 => XapianOp::OpOr,
+//            _ => unreachable!(),
+//        };
+//    }
+//
+//    fn update_query<'a>(
+//        mut self,
+//        mut qp: QueryParser,
+//        flags: i16,
+//        qstr: &str,
+//    ) -> Result<QueryParseState, Report> {
+//        if self.query.is_none() {
+//            self.query = Some(
+//                qp.parse_query(qstr, flags)
+//                    .expect("No more operators: QueryParser error"),
+//            );
+//        } else {
+//            self.query = Some(
+//                self.query
+//                    .unwrap()
+//                    .add_right(self.operator(), &mut qp.parse_query(qstr, flags)?)
+//                    .expect("No more operators: Failed to add_right()"),
+//            );
+//        }
+//        return Ok(self);
+//    }
+//
+//    fn update_operator<'a>(
+//        mut self,
+//        qp: QueryParser,
+//        operator: XapianOp,
+//    ) -> Result<QueryParseState, Report> {
+//        self.operator = match operator {
+//            XapianOp::OpAndNot => {
+//                //println!("No more operators: Use Operator And Not");
+//                Some(XapianOp::OpAndNot as i32)
+//            }
+//            XapianOp::OpAnd => {
+//                //println!("No more operators: Use Operator And");
+//                Some(XapianOp::OpAnd as i32)
+//            }
+//            XapianOp::OpXor => {
+//                //println!("No more operators: Use Operator Xor");
+//                Some(XapianOp::OpXor as i32)
+//            }
+//            XapianOp::OpOr => {
+//                //println!("No more operators: Use Operator Or");
+//                Some(XapianOp::OpOr as i32)
+//            }
+//            _ => {
+//                panic!("No more operators: Found unsupported Xapian Operation");
+//            }
+//        };
+//        return Ok(self);
+//    }
+//}
+
