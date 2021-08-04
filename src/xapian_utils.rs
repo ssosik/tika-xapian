@@ -58,19 +58,6 @@ pub fn match_xapiantag(input: &str) -> IResult<&str, XapianTag> {
     ))(input)
 }
 
-//named!(
-//    match_xapiantag2,
-//    recognize!(alt!(
-//        value!(XapianTag::Author, tag!("author:"))
-//            | value!(XapianTag::Date, tag!("date:"))
-//            | value!(XapianTag::Filename, tag!("filename:"))
-//            | value!(XapianTag::Fullpath, tag!("fullpath:"))
-//            | value!(XapianTag::Title, tag!("title:"))
-//            | value!(XapianTag::Subtitle, tag!("subtitle:"))
-//            | value!(XapianTag::Tag, tag!("tag:"))
-//    ))
-//);
-
 // Local representation of xapian expression operators, most notably these are Copy!
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MatchOp {
@@ -91,31 +78,9 @@ pub enum MatchOp {
 }
 
 use std::convert::From;
-impl From<XapianOp> for MatchOp {
-    fn from(item: XapianOp) -> Self {
+impl From<MatchOp> for XapianOp {
+    fn from(item: MatchOp) -> Self {
         match item {
-            XapianOp::OpAnd => MatchOp::And,
-            XapianOp::OpAndNot => MatchOp::AndNot,
-            XapianOp::OpOr => MatchOp::Or,
-            XapianOp::OpXor => MatchOp::Xor,
-            XapianOp::OpAndMaybe => MatchOp::AndMaybe,
-            XapianOp::OpFilter => MatchOp::Filter,
-            XapianOp::OpNear => MatchOp::Near,
-            XapianOp::OpPhrase => MatchOp::Phrase,
-            XapianOp::OpValueRange => MatchOp::ValueRange,
-            XapianOp::OpScaleWeight => MatchOp::ScaleWeight,
-            XapianOp::OpEliteSet => MatchOp::EliteSet,
-            XapianOp::OpValueGe => MatchOp::ValueGe,
-            XapianOp::OpValueLe => MatchOp::ValueLe,
-            XapianOp::OpSynonym => MatchOp::Synonym,
-        }
-    }
-}
-
-use std::convert::Into;
-impl Into<XapianOp> for MatchOp {
-    fn into(self) -> XapianOp {
-        match self {
             MatchOp::And => XapianOp::OpAnd,
             MatchOp::AndNot => XapianOp::OpAndNot,
             MatchOp::Or => XapianOp::OpOr,
@@ -133,6 +98,28 @@ impl Into<XapianOp> for MatchOp {
         }
     }
 }
+
+//use std::convert::Into;
+//impl Into<XapianOp> for MatchOp {
+//    fn into(self) -> XapianOp {
+//        match self {
+//            MatchOp::And => XapianOp::OpAnd,
+//            MatchOp::AndNot => XapianOp::OpAndNot,
+//            MatchOp::Or => XapianOp::OpOr,
+//            MatchOp::Xor => XapianOp::OpXor,
+//            MatchOp::AndMaybe => XapianOp::OpAndMaybe,
+//            MatchOp::Filter => XapianOp::OpFilter,
+//            MatchOp::Near => XapianOp::OpNear,
+//            MatchOp::Phrase => XapianOp::OpPhrase,
+//            MatchOp::ValueRange => XapianOp::OpValueRange,
+//            MatchOp::ScaleWeight => XapianOp::OpScaleWeight,
+//            MatchOp::EliteSet => XapianOp::OpEliteSet,
+//            MatchOp::ValueGe => XapianOp::OpValueGe,
+//            MatchOp::ValueLe => XapianOp::OpValueLe,
+//            MatchOp::Synonym => XapianOp::OpSynonym,
+//        }
+//    }
+//}
 
 impl fmt::Display for MatchOp {
     // This trait requires `fmt` with this exact signature.
@@ -340,7 +327,7 @@ named!(
     ))
 );
 
-pub fn test_user_query(mut qstr: &str) -> Result<(), Report> {
+pub fn test_user_query(qstr: &str) -> Result<(), Report> {
     if let Ok((a, b)) = doublequoted(qstr.as_bytes()) {
         let a = str::from_utf8(a).unwrap();
         let b = str::from_utf8(b).unwrap();
@@ -449,6 +436,7 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
         //println!("MATCH OP: {}", qstr);
         match match_op(&qstr) {
             Ok((remaining, op)) => {
+                // Convert MatchOp into Some(XapianOp)
                 operator = Some(op.into());
                 qstr = remaining
             }
@@ -577,3 +565,16 @@ fn perform_query_canned() -> Result<(), Report> {
 
     Ok(())
 }
+
+//named!(
+//    match_xapiantag2,
+//    recognize!(alt!(
+//        value!(XapianTag::Author, tag!("author:"))
+//            | value!(XapianTag::Date, tag!("date:"))
+//            | value!(XapianTag::Filename, tag!("filename:"))
+//            | value!(XapianTag::Fullpath, tag!("fullpath:"))
+//            | value!(XapianTag::Title, tag!("title:"))
+//            | value!(XapianTag::Subtitle, tag!("subtitle:"))
+//            | value!(XapianTag::Tag, tag!("tag:"))
+//    ))
+//);
