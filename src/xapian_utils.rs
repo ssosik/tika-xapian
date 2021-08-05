@@ -299,15 +299,50 @@ mod words_tests {
     }
 }
 
-//n quoted(input: &str) -> IResult<Span> {
-//   delimited(tag(r#"""#), words, tag(r#"""#))(input)
-//
-//
-//fn tagged(input: &str) -> IResult<&str, Vec<(Vec<&str>, &str, Vec<&str>)>> {
+fn quoted(input: Span) -> IResult<Span> {
+   delimited(tag(r#"""#), words, tag(r#"""#))(input)
+}
+
+#[cfg(test)]
+mod quoted_tests {
+    use super::*;
+    #[test]
+    fn one_word_no_trailing_space() {
+        let (remainder, matched) = quoted(Span::new(r#""foo""#)).expect("Failed to parse input");
+
+        assert_eq!(matched.fragment(), &&"foo"[..]);
+        assert_eq!(matched.location_offset(), 1);
+        assert_eq!(matched.location_line(), 1);
+        assert_eq!(matched.get_column(), 2);
+
+        assert_eq!(remainder.fragment(), &&""[..]);
+        assert_eq!(remainder.location_offset(), 5);
+        assert_eq!(remainder.location_line(), 1);
+        assert_eq!(remainder.get_column(), 6);
+    }
+
+    #[test]
+    fn one_word_with_trailing_space() {
+        let (remainder, matched) = quoted(Span::new(r#""foo ""#)).expect("Failed to parse input");
+
+        assert_eq!(matched.fragment(), &&"foo"[..]);
+        assert_eq!(matched.location_offset(), 0);
+        assert_eq!(matched.location_line(), 1);
+        assert_eq!(matched.get_column(), 1);
+
+        assert_eq!(remainder.fragment(), &&" "[..]);
+        assert_eq!(remainder.location_offset(), 3);
+        assert_eq!(remainder.location_line(), 1);
+        assert_eq!(remainder.get_column(), 4);
+    }
+}
+
+
+//fn tagged(input: Span) -> IResult<&str, Vec<(Vec<&str>, &str, Vec<&str>)>> {
 //    many1(tuple((word, tag(":"), alt((word, quoted)))))(input)
 //}
 //
-//fn expression(input: &str) -> IResult<&str, (Vec<&str>, MatchOp, Vec<&str>)> {
+//fn expression(input: Span) -> IResult<&str, (Vec<&str>, MatchOp, Vec<&str>)> {
 //    tuple((word, matchop, alt((word, quoted))))(input)
 //}
 
