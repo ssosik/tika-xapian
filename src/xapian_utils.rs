@@ -107,10 +107,10 @@ impl fmt::Display for MatchOp {
 pub fn matchop(input: &str) -> IResult<MatchOp> {
     alt((
         value(MatchOp::AndNot, tag_no_case("AND NOT")),
+        value(MatchOp::AndMaybe, tag_no_case("AND MAYBE")),
         value(MatchOp::And, tag_no_case("AND")),
         value(MatchOp::Xor, tag_no_case("XOR")),
         value(MatchOp::Or, tag_no_case("OR")),
-        value(MatchOp::AndMaybe, tag_no_case("AND MAYBE")),
         value(MatchOp::Filter, tag_no_case("FILTER")),
         value(MatchOp::Near, tag_no_case("NEAR")),
         value(MatchOp::Phrase, tag_no_case("PHRASE")),
@@ -501,18 +501,73 @@ mod expression_tests {
         //);
         //println!("OP: {:?}", operator(Span::new(r#"AND foo bar AND qux\n"#)));
 
-        if let Ok((rest, matched)) = take_up_to_operator(r#"fooobarr AND foo AND bar\n"#.as_bytes())
-        {
-            let matched = str::from_utf8(matched).expect("Failed to convert [u8] to str");
-            let rest = str::from_utf8(rest).expect("Failed to convert [u8] to str");
-            println!("UNTILOP: {} Rest:{}", matched, rest);
-            if let Ok((rest, op)) = matchop(rest) {
-                println!("OP: {} Rest:{}", op, rest);
+        let mut query_str = r#"'eep op' tag:meh fooobarr AND maybe maybe foo AND bar\n"#;
+        match parse_query(query_str) {
+            Ok(query) => {
+                println!("OK");
             }
-        }
+            Err(e) => {
+                println!("Err: {}", e);
+            }
+        };
+
+        //let mut rest = query_str.as_bytes();
+
+        //let mut depth = 0;
+        //while rest.len() > 0 {
+        //    depth += 1;
+        //    rest = if let Ok((remaining, matched)) = take_up_to_operator(rest) {
+        //        let matched = str::from_utf8(matched).expect("Failed to convert [u8] to str");
+        //        let reststr = str::from_utf8(remaining).expect("Failed to convert [u8] to str");
+        //        println!("UNTILOP: {} Rest:{}", matched, reststr);
+        //        if let Ok((rest, op)) = matchop(reststr) {
+        //            println!("OP: {} Rest:{}", op, rest);
+        //        }
+        //        remaining
+        //    } else {
+        //        println!("no more operators");
+        //        break;
+        //    };
+        //    if depth > 5 {
+        //        break;
+        //    }
+        //}
 
         assert!(false);
     }
+}
+
+fn parse_query(mut qstr: &str) -> Result<Query, Report> {
+    let mut qp = QueryParser::new()?;
+    let mut stem = Stem::new("en")?;
+    qp.set_stemmer(&mut stem)?;
+
+    let flags = FlagBoolean as i16
+        | FlagPhrase as i16
+        | FlagLovehate as i16
+        | FlagBooleanAnyCase as i16
+        | FlagWildcard as i16
+        | FlagPureNot as i16
+        | FlagPartial as i16
+        | FlagSpellingCorrection as i16;
+
+    let mut query;
+
+    // Create the initial query
+    match take_up_to_operator(qstr.as_bytes()) {
+        Ok((rest, matched)) => {
+            println!("initial match: {}", str::from_utf8(matched)?);
+            query = qp.parse_query(str::from_utf8(matched)?, flags)?;
+        }
+        Err(e) => {
+            // No operator found in the initial string, return a query for the entire string
+            // TODO add support here for Tags
+            println!("no initial match: {}", e);
+            return Ok((qp.parse_query(qstr, flags)?));
+        }
+    }
+
+    Ok((query))
 }
 
 // TODO is there a better way to handle case insensitity here?
