@@ -21,51 +21,6 @@ use xapian_rusty::{Database, Query, QueryParser, Stem, XapianOp, DB_CREATE_OR_OV
 // The most helpful write-up on using Nom that I've seen so far:
 //   https://iximiuz.com/en/posts/rust-writing-parsers-with-nom/
 
-// Xapian tags in human format, e.g. "author:" or "title:"
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum XapianTag {
-    Author,
-    Date,
-    Filename,
-    Fullpath,
-    Title,
-    Subtitle,
-    Tag,
-}
-
-impl XapianTag {
-    fn to_xapian<'a>(self) -> &'a str {
-        match self {
-            XapianTag::Author => "A",
-            XapianTag::Date => "D",
-            XapianTag::Filename => "F",
-            XapianTag::Fullpath => "F",
-            XapianTag::Title => "S",
-            XapianTag::Subtitle => "XS",
-            XapianTag::Tag => "K",
-        }
-    }
-}
-
-impl fmt::Display for XapianTag {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<{}>", self.to_xapian())
-    }
-}
-
-pub fn xapiantag(input: Span) -> IResult<XapianTag> {
-    alt((
-        value(XapianTag::Author, tag_no_case("author:")),
-        value(XapianTag::Date, tag_no_case("date:")),
-        value(XapianTag::Filename, tag_no_case("filename:")),
-        value(XapianTag::Fullpath, tag_no_case("fullpath:")),
-        value(XapianTag::Title, tag_no_case("title:")),
-        value(XapianTag::Subtitle, tag_no_case("subtitle:")),
-        value(XapianTag::Tag, tag_no_case("tag:")),
-    ))(input)
-}
-
 // Local representation of xapian expression operators, most notably these are Copy!
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MatchOp {
@@ -385,6 +340,86 @@ mod tagged_tests {
     #[test]
     fn tag_entirely_double_quoted() {
         assert!(tagged(Span::new(r#""foo:bar""#)).is_err())
+    }
+}
+
+// Xapian tags in human format, e.g. "author:" or "title:"
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum XapianTag {
+    Author,
+    Date,
+    Filename,
+    Fullpath,
+    Title,
+    Subtitle,
+    Tag,
+}
+
+impl XapianTag {
+    fn to_xapian<'a>(self) -> &'a str {
+        match self {
+            XapianTag::Author => "A",
+            XapianTag::Date => "D",
+            XapianTag::Filename => "F",
+            XapianTag::Fullpath => "F",
+            XapianTag::Title => "S",
+            XapianTag::Subtitle => "XS",
+            XapianTag::Tag => "K",
+        }
+    }
+}
+
+impl fmt::Display for XapianTag {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "<{}>", self.to_xapian())
+    }
+}
+
+pub fn xapiantag(input: Span) -> IResult<(XapianTag, Span)> {
+    separated_pair(
+        alt((
+            value(XapianTag::Author, tag_no_case("author")),
+            value(XapianTag::Date, tag_no_case("date")),
+            value(XapianTag::Filename, tag_no_case("filename")),
+            value(XapianTag::Fullpath, tag_no_case("fullpath")),
+            value(XapianTag::Title, tag_no_case("title")),
+            value(XapianTag::Subtitle, tag_no_case("subtitle")),
+            value(XapianTag::Tag, tag_no_case("tag")),
+        )),
+        tag(":"),
+        alt((quoted, word)),
+    )(input)
+}
+
+mod xapiantag_tests {
+    use super::*;
+    #[test]
+    fn unrecognized_tag() {
+        assert!(xapiantag(Span::new(r#"foo:bar"#)).is_err())
+    }
+
+    #[test]
+    fn tag_no_trailing_whitespace() {
+        assert!(xapiantag(Span::new(r#"author:bar"#)).is_err())
+    }
+
+    #[test]
+    fn one_word_tag() {
+        let (remainder, (tag, value)) =
+            xapiantag(Span::new(r#"author:bar "#)).expect("Failed to parse input");
+        assert_eq!("A", tag.to_xapian());
+        assert_eq!(&"bar", value.fragment());
+        assert_eq!(&" ", remainder.fragment());
+    }
+
+    #[test]
+    fn two_word_tag() {
+        let (remainder, (tag, value)) =
+            xapiantag(Span::new(r#"author:bar other"#)).expect("Failed to parse input");
+        assert_eq!("A", tag.to_xapian());
+        assert_eq!(&"bar", value.fragment());
+        assert_eq!(&" other", remainder.fragment());
     }
 }
 
