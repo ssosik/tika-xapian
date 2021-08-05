@@ -485,26 +485,43 @@ mod xapiantag_tests {
 //    )))(Span::new(input))
 //}
 
+fn expression(input: Span) -> IResult<Vec<Span>> {
+    many1(alt((quoted, tagged, word, multispace1)))(input)
+}
+
 #[cfg(test)]
 mod expression_tests {
     use super::*;
     #[test]
     fn test() {
-        //expression(&r#"tag:foo "baz bar" AND hee "hee hee"\n"#);
-        //expression(&r#"foo AND bar\n"#);
-        //expression(&r#"tag:foo AND hee "hee hee"\n"#);
-        //expression(&r#"her her her AND hee "hee hee"\n"#);
-        //expression(&r#"her her her AND author:blob bpob\n"#);
-        //println!(
-        //    "OP: {:?}",
-        //    operator(Span::new(r#"her her her AND author:blob bpob\n"#))
-        //);
-        //println!("OP: {:?}", operator(Span::new(r#"AND foo bar AND qux\n"#)));
+        //ExpectedParseResult::new(&"foo:bar", 0, 1, 1, &" ", 7, 1, 8)
+        //    .compare(&expression, &r#"title:foo "baz bar" hee "hee hee"\n"#);
+        let result = expression(Span::new(&r#"title:foo "baz bar" hee "hee hee"\n"#))
+            .expect("Failed to parse");
+        println!("Expressions: {:?}", result);
+        assert!(false);
+    }
+}
 
-        let query_str = r#"'eep op' tag:meh fooobarr AND maybe maybe foo AND bar\n"#;
+#[cfg(test)]
+mod query_tests {
+    use super::*;
+    #[test]
+    fn test1() {
+        let query_str = r#"eep op tag:meh fooobarr AND maybe maybe foo AND bar\n"#;
         let mut result = parse_user_query(query_str).expect("Failed to parse");
         assert_eq!(
             "Query((((Zeep@1 OR Zop@2 OR (tag@3 PHRASE 2 meh@4) OR Zfooobarr@5) AND_MAYBE (Zmayb@1 OR Zfoo@2)) AND (bar@1 PHRASE 2 n@2)))", 
+            result.get_description()
+        );
+    }
+
+    #[test]
+    fn test2() {
+        let query_str = r#""eep op" tag:meh fooobarr AND maybe maybe foo AND bar\n"#;
+        let mut result = parse_user_query(query_str).expect("Failed to parse");
+        assert_eq!(
+            "Query(((((eep@1 PHRASE 2 op@2) OR (tag@3 PHRASE 2 meh@4) OR Zfooobarr@5) AND_MAYBE (Zmayb@1 OR Zfoo@2)) AND (bar@1 PHRASE 2 n@2)))", 
             result.get_description()
         );
     }
