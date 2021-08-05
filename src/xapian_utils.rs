@@ -599,7 +599,9 @@ fn parse_query(mut qstr: &str) -> Result<Query, Report> {
                 // TODO add support here for Tags
                 println!("add to query: {} {}", operator, qstr);
                 query = query.add_right(operator.into(), &mut qp.parse_query(qstr, flags)?)?;
-                //return Ok((qp.parse_query(qstr, flags)?));
+
+                // No more operators found, break out of the loop
+                break;
             }
         }
 
@@ -617,6 +619,8 @@ fn parse_query(mut qstr: &str) -> Result<Query, Report> {
             break;
         }
     }
+
+    println!("Query description: {}", query.get_description());
 
     Ok((query))
 }
