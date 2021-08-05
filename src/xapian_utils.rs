@@ -285,11 +285,18 @@ mod words_tests {
 }
 
 fn quoted(input: Span) -> IResult<Span> {
-    recognize(delimited(
-        recognize(tag(r#"""#)),
-        recognize(words),
-        recognize(tag(r#"""#)),
-    ))(input)
+    recognize(alt((
+        delimited(
+            recognize(tag(r#"""#)),
+            recognize(words),
+            recognize(tag(r#"""#)),
+        ),
+        delimited(
+            recognize(tag(r#"'"#)),
+            recognize(words),
+            recognize(tag(r#"'"#)),
+        ),
+    )))(input)
 }
 
 #[cfg(test)]
@@ -324,6 +331,67 @@ mod quoted_tests {
         assert_eq!(remainder.location_line(), 1);
         assert_eq!(remainder.get_column(), 7);
     }
+
+    #[test]
+    fn two_words() {
+        let (remainder, matched) = quoted(Span::new(r#""foo bar""#)).expect("Failed to parse input");
+
+        assert_eq!(matched.fragment(), &&"\"foo bar\""[..]);
+        assert_eq!(matched.location_offset(), 0);
+        assert_eq!(matched.location_line(), 1);
+        assert_eq!(matched.get_column(), 1);
+
+        assert_eq!(remainder.fragment(), &&""[..]);
+        assert_eq!(remainder.location_offset(), 9);
+        assert_eq!(remainder.location_line(), 1);
+        assert_eq!(remainder.get_column(), 10);
+    }
+
+    #[test]
+    fn single_quote_one_word_no_trailing_space() {
+        let (remainder, matched) = quoted(Span::new(r#"'foo'"#)).expect("Failed to parse input");
+
+        assert_eq!(matched.fragment(), &&"\'foo\'"[..]);
+        assert_eq!(matched.location_offset(), 0);
+        assert_eq!(matched.location_line(), 1);
+        assert_eq!(matched.get_column(), 1);
+
+        assert_eq!(remainder.fragment(), &&""[..]);
+        assert_eq!(remainder.location_offset(), 5);
+        assert_eq!(remainder.location_line(), 1);
+        assert_eq!(remainder.get_column(), 6);
+    }
+
+    #[test]
+    fn single_quote_one_word_with_trailing_space() {
+        let (remainder, matched) = quoted(Span::new(r#"'foo '"#)).expect("Failed to parse input");
+
+        assert_eq!(matched.fragment(), &&"\'foo \'"[..]);
+        assert_eq!(matched.location_offset(), 0);
+        assert_eq!(matched.location_line(), 1);
+        assert_eq!(matched.get_column(), 1);
+
+        assert_eq!(remainder.fragment(), &&""[..]);
+        assert_eq!(remainder.location_offset(), 6);
+        assert_eq!(remainder.location_line(), 1);
+        assert_eq!(remainder.get_column(), 7);
+    }
+
+    #[test]
+    fn single_quote_two_words() {
+        let (remainder, matched) = quoted(Span::new(r#"'foo bar'"#)).expect("Failed to parse input");
+
+        assert_eq!(matched.fragment(), &&"\'foo bar\'"[..]);
+        assert_eq!(matched.location_offset(), 0);
+        assert_eq!(matched.location_line(), 1);
+        assert_eq!(matched.get_column(), 1);
+
+        assert_eq!(remainder.fragment(), &&""[..]);
+        assert_eq!(remainder.location_offset(), 9);
+        assert_eq!(remainder.location_line(), 1);
+        assert_eq!(remainder.get_column(), 10);
+    }
+
 }
 
 //fn tagged(input: Span) -> IResult<&str, Vec<(Vec<&str>, &str, Vec<&str>)>> {
