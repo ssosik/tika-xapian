@@ -557,7 +557,7 @@ fn parse_query(mut qstr: &str) -> Result<Query, Report> {
     // Create the initial query
     match take_up_to_operator(qstr.as_bytes()) {
         Ok((rest, matched)) => {
-            println!("initial match: {}", str::from_utf8(matched)?);
+            println!(r#"initial match: "{}""#, str::from_utf8(matched)?);
             query = qp.parse_query(str::from_utf8(matched)?, flags)?;
             qstr = str::from_utf8(rest)?;
         }
@@ -571,14 +571,52 @@ fn parse_query(mut qstr: &str) -> Result<Query, Report> {
 
     // Pop off the operator
     if let Ok((rest, op)) = matchop(qstr) {
-        println!("OP: {} Rest:{}", op, rest);
+        //println!("OP: {} Rest:{}", op, rest);
         operator = op;
         qstr = *rest;
     } else {
-        eprintln!("Couldn't match leading operator in {}", qstr);
+        // This shouldn't ever happen
+        panic!("Couldn't match leading operator in {}", qstr);
     }
 
-    println!("parsing the rest: {}", qstr);
+    let mut depth = 0;
+    while qstr.len() > 0 {
+        depth += 1;
+        //println!("parsing the rest: {}", qstr);
+
+        // Add to the query
+        match take_up_to_operator(qstr.as_bytes()) {
+            Ok((rest, matched)) => {
+                println!("add to query: {} {}", operator, str::from_utf8(matched)?);
+
+                query = query.add_right(
+                    operator.into(),
+                    &mut qp.parse_query(str::from_utf8(matched)?, flags)?,
+                )?;
+                qstr = str::from_utf8(rest)?;
+            }
+            Err(e) => {
+                // TODO add support here for Tags
+                println!("add to query: {} {}", operator, qstr);
+                query = query.add_right(operator.into(), &mut qp.parse_query(qstr, flags)?)?;
+                //return Ok((qp.parse_query(qstr, flags)?));
+            }
+        }
+
+        // Pop off the operator
+        if let Ok((rest, op)) = matchop(qstr) {
+            //println!("OP: {} Rest:{}", op, rest);
+            operator = op;
+            qstr = *rest;
+        } else {
+            // This shouldn't ever happen
+            panic!("Couldn't match leading operator in {}", qstr);
+        }
+
+        if depth > 5 {
+            break;
+        }
+    }
 
     Ok((query))
 }
