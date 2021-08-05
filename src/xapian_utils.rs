@@ -422,24 +422,24 @@ mod xapiantag_tests {
     }
 }
 
-fn operator(input: Span) -> IResult<Span> {
-    recognize(alt((
-        tag_no_case("AND NOT"),
-        tag_no_case("AND"),
-        tag_no_case("XOR"),
-        tag_no_case("OR"),
-        tag_no_case("AND MAYBE"),
-        tag_no_case("FILTER"),
-        tag_no_case("NEAR"),
-        tag_no_case("PHRASE"),
-        tag_no_case("RANGE"),
-        tag_no_case("SCALED"),
-        tag_no_case("ELITE"),
-        tag_no_case(">"),
-        tag_no_case("<"),
-        tag_no_case("SYNONYM"),
-    )))(input)
-}
+//fn operator(input: Span) -> IResult<Span> {
+//    recognize(alt((
+//        tag_no_case("AND NOT"),
+//        tag_no_case("AND"),
+//        tag_no_case("XOR"),
+//        tag_no_case("OR"),
+//        tag_no_case("AND MAYBE"),
+//        tag_no_case("FILTER"),
+//        tag_no_case("NEAR"),
+//        tag_no_case("PHRASE"),
+//        tag_no_case("RANGE"),
+//        tag_no_case("SCALED"),
+//        tag_no_case("ELITE"),
+//        tag_no_case(">"),
+//        tag_no_case("<"),
+//        tag_no_case("SYNONYM"),
+//    )))(input)
+//}
 
 //fn expression(input: Span) -> IResult<Span> {
 //    recognize(many1(alt((quoted, tagged, word, multispace1))))(input)
@@ -460,17 +460,17 @@ fn operator(input: Span) -> IResult<Span> {
 //    }
 //}
 
-fn expression(input: &str) -> Vec<Query> {
-    let ret = vec![];
-    let res = many1(alt((operator, quoted, tagged, words)))(Span::new(input));
-    if let Ok((rest, matched)) = res {
-        for item in matched {
-            println!("Match item: {}", *item);
-        }
-        println!("Rest: {}", *rest);
-    }
-    ret
-}
+//fn expression(input: &str) -> Vec<Query> {
+//    let ret = vec![];
+//    let res = many1(alt((operator, quoted, tagged, words)))(Span::new(input));
+//    if let Ok((rest, matched)) = res {
+//        for item in matched {
+//            println!("Match item: {}", *item);
+//        }
+//        println!("Rest: {}", *rest);
+//    }
+//    ret
+//}
 
 fn take_until_operator(input: &str) -> IResult<Span> {
     recognize(alt((
@@ -552,12 +552,14 @@ fn parse_query(mut qstr: &str) -> Result<Query, Report> {
         | FlagSpellingCorrection as i16;
 
     let mut query;
+    let mut operator;
 
     // Create the initial query
     match take_up_to_operator(qstr.as_bytes()) {
         Ok((rest, matched)) => {
             println!("initial match: {}", str::from_utf8(matched)?);
             query = qp.parse_query(str::from_utf8(matched)?, flags)?;
+            qstr = str::from_utf8(rest)?;
         }
         Err(e) => {
             // No operator found in the initial string, return a query for the entire string
@@ -566,6 +568,17 @@ fn parse_query(mut qstr: &str) -> Result<Query, Report> {
             return Ok((qp.parse_query(qstr, flags)?));
         }
     }
+
+    // Pop off the operator
+    if let Ok((rest, op)) = matchop(qstr) {
+        println!("OP: {} Rest:{}", op, rest);
+        operator = op;
+        qstr = *rest;
+    } else {
+        eprintln!("Couldn't match leading operator in {}", qstr);
+    }
+
+    println!("parsing the rest: {}", qstr);
 
     Ok((query))
 }
