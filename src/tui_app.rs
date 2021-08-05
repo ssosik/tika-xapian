@@ -196,7 +196,7 @@ pub fn interactive_query() -> Result<Vec<String>, Report> {
                 _ => {}
             }
 
-            let query = xapian_utils::parse_user_query(xapian_utils::Span::new(&app.input))?;
+            let query = xapian_utils::parse_user_query(&app.input)?;
             //app.matches = xapian_utils::query_db(db, query)?;
             app.matches = xapian_utils::query_db(query)?;
         }
