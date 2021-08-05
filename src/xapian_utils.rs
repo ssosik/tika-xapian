@@ -216,7 +216,9 @@ impl ExpectedParseResult<'_> {
             remainder_column: rc,
         }
     }
-    fn compare(self, (remainder, matched): (Span, Span)) {
+    fn compare(self, f: &dyn Fn(Span) -> IResult<Span>, s: &str) {
+        let (remainder, matched) = f(Span::new(s)).expect("Failed to parse input");
+
         println!("Matched {}; Remainder {}", *matched, *remainder);
         assert_eq!(&self.matched_fragment, matched.fragment());
         assert_eq!(self.matched_offset, matched.location_offset());
@@ -243,19 +245,19 @@ mod word_tests {
     #[test]
     fn one_word_with_trailing_space() {
         ExpectedParseResult::new(&"foo", 0, 1, 1, &" ", 3, 1, 4)
-            .compare(word(Span::new(r#"foo "#)).expect("Failed to parse input"))
+            .compare(&word, &r#"foo "#)
     }
 
     #[test]
     fn one_word_with_trailing_newline() {
         ExpectedParseResult::new(&"foo", 0, 1, 1, &"\\n", 3, 1, 4)
-            .compare(word(Span::new(r#"foo\n"#)).expect("Failed to parse input"))
+            .compare(&word, &r#"foo\n"#)
     }
 
     #[test]
     fn two_space_separated_words() {
         ExpectedParseResult::new(&"foo", 0, 1, 1, &" bar", 3, 1, 4)
-            .compare(word(Span::new(r#"foo bar"#)).expect("Failed to parse input"))
+            .compare(&word, &r#"foo bar"#)
     }
 }
 
