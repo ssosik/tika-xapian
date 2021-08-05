@@ -6,7 +6,7 @@ use nom::{
     character::streaming::{alphanumeric0, alphanumeric1, multispace0, multispace1, space0},
     combinator::{recognize, value},
     multi::{many0, many1},
-    sequence::{delimited, tuple},
+    sequence::{delimited, separated_pair, tuple},
     {alt, branch::alt, complete, delimited, named, tag, take_until, value}, // {IResult},
 };
 use std::convert::From;
@@ -183,6 +183,54 @@ fn word(input: Span) -> IResult<Span> {
     recognize(many1(alt((recognize(alphanumeric1), recognize(tag("_"))))))(input)
 }
 
+struct ExpectedParseResult<'a> {
+    matched_fragment: &'a str,
+    matched_offset: usize,
+    matched_line: u32,
+    matched_column: usize,
+    remainder_fragment: &'a str,
+    remainder_offset: usize,
+    remainder_line: u32,
+    remainder_column: usize,
+}
+
+impl ExpectedParseResult<'_> {
+    fn new<'a>(
+        mf: &'a str,
+        mo: usize,
+        ml: u32,
+        mc: usize,
+        rf: &'a str,
+        ro: usize,
+        rl: u32,
+        rc: usize,
+    ) -> ExpectedParseResult<'a> {
+        ExpectedParseResult {
+            matched_fragment: mf,
+            matched_offset: mo,
+            matched_line: ml,
+            matched_column: mc,
+            remainder_fragment: rf,
+            remainder_offset: ro,
+            remainder_line: rl,
+            remainder_column: rc,
+        }
+    }
+    fn compare(self, (remainder, matched): (Span, Span)) {
+        println!("Matched {}; Remainder {}", *matched, *remainder);
+        assert_eq!(&self.matched_fragment, matched.fragment());
+        assert_eq!(self.matched_offset, matched.location_offset());
+        assert_eq!(self.matched_line, matched.location_line());
+        assert_eq!(self.matched_column, matched.get_column());
+
+        // // For debugging:
+        assert_eq!(&self.remainder_fragment, remainder.fragment());
+        assert_eq!(self.remainder_offset, remainder.location_offset());
+        assert_eq!(self.remainder_line, remainder.location_line());
+        assert_eq!(self.remainder_column, remainder.get_column());
+    }
+}
+
 #[cfg(test)]
 mod word_tests {
     use super::*;
@@ -194,49 +242,20 @@ mod word_tests {
 
     #[test]
     fn one_word_with_trailing_space() {
-        let (remainder, matched) = word(Span::new(r#"foo "#)).expect("Failed to parse input");
-
-        assert_eq!(matched.fragment(), &&"foo"[..]);
-        assert_eq!(matched.location_offset(), 0);
-        assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
-
-        // // For debugging:
-        //assert_eq!(remainder, Span::new(" bar"));
-        assert_eq!(remainder.fragment(), &&" "[..]);
-        assert_eq!(remainder.location_offset(), 3);
-        assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 4);
+        ExpectedParseResult::new(&"foo", 0, 1, 1, &" ", 3, 1, 4)
+            .compare(word(Span::new(r#"foo "#)).expect("Failed to parse input"))
     }
 
     #[test]
     fn one_word_with_trailing_newline() {
-        let (remainder, matched) = word(Span::new(r#"foo\n"#)).expect("Failed to parse input");
-
-        assert_eq!(matched.fragment(), &&"foo"[..]);
-        assert_eq!(matched.location_offset(), 0);
-        assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
-
-        assert_eq!(remainder.fragment(), &&"\\n"[..]);
-        assert_eq!(remainder.location_offset(), 3);
-        assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 4);
+        ExpectedParseResult::new(&"foo", 0, 1, 1, &"\\n", 3, 1, 4)
+            .compare(word(Span::new(r#"foo\n"#)).expect("Failed to parse input"))
     }
 
     #[test]
     fn two_space_separated_words() {
-        let (remainder, matched) = word(Span::new(r#"foo bar"#)).expect("Failed to parse input");
-
-        assert_eq!(matched.fragment(), &&"foo"[..]);
-        assert_eq!(matched.location_offset(), 0);
-        assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
-
-        assert_eq!(remainder.fragment(), &&" bar"[..]);
-        assert_eq!(remainder.location_offset(), 3);
-        assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 4);
+        ExpectedParseResult::new(&"foo", 0, 1, 1, &" bar", 3, 1, 4)
+            .compare(word(Span::new(r#"foo bar"#)).expect("Failed to parse input"))
     }
 }
 
@@ -334,7 +353,8 @@ mod quoted_tests {
 
     #[test]
     fn two_words() {
-        let (remainder, matched) = quoted(Span::new(r#""foo bar""#)).expect("Failed to parse input");
+        let (remainder, matched) =
+            quoted(Span::new(r#""foo bar""#)).expect("Failed to parse input");
 
         assert_eq!(matched.fragment(), &&"\"foo bar\""[..]);
         assert_eq!(matched.location_offset(), 0);
@@ -379,7 +399,8 @@ mod quoted_tests {
 
     #[test]
     fn single_quote_two_words() {
-        let (remainder, matched) = quoted(Span::new(r#"'foo bar'"#)).expect("Failed to parse input");
+        let (remainder, matched) =
+            quoted(Span::new(r#"'foo bar'"#)).expect("Failed to parse input");
 
         assert_eq!(matched.fragment(), &&"\'foo bar\'"[..]);
         assert_eq!(matched.location_offset(), 0);
@@ -391,14 +412,13 @@ mod quoted_tests {
         assert_eq!(remainder.location_line(), 1);
         assert_eq!(remainder.get_column(), 10);
     }
-
 }
 
-//fn tagged(input: Span) -> IResult<&str, Vec<(Vec<&str>, &str, Vec<&str>)>> {
-//    many1(tuple((word, tag(":"), alt((word, quoted)))))(input)
-//}
-//
-//fn expression(input: Span) -> IResult<&str, (Vec<&str>, MatchOp, Vec<&str>)> {
+fn tagged(input: Span) -> IResult<Span> {
+    recognize(separated_pair(word, tag(":"), alt((quoted, word))))(input)
+}
+
+//fn expression(input: Span) -> IResult<Span> {
 //    tuple((word, matchop, alt((word, quoted))))(input)
 //}
 
