@@ -181,8 +181,6 @@ fn word(input: Span) -> IResult<Span> {
     // Use `recognize` here to discard the actual parsed value and return the matched substring as
     // a result
     recognize(many1(alt((recognize(alphanumeric1), recognize(tag("_"))))))(input)
-    //let (rem, mat) = many1(alt((recognize(alphanumeric1), recognize(tag("_")))))(input)?;
-    //Ok((rem, mat[0]))
 }
 
 #[cfg(test)]
@@ -244,16 +242,6 @@ mod word_tests {
 
 fn words(input: Span) -> IResult<Span> {
     alt((multispace1, word))(input)
-    //let (rem, mat) = many1(alt((multispace1, word)))(input)?;
-    //println!("WORDS Rem: {:?} Mat:{:?}", rem, mat);
-    //let mut result: &str = "";
-    //for s in mat {
-    //    result = &format!("{} {}", result, s.fragment());
-    //}
-    //return Ok((rem, Span::new(&mat[0])));
-    //////let mat =mat.into_iter().map(|l| *l.fragment()).flat_map(|s| s.chars()).collect();
-    ////let mat =mat.into_iter().map(|l| *l.fragment()).flat_map(|s| s.chars()).collect();
-    ////Ok((rem, Span::new(mat)))
 }
 
 #[cfg(test)]
@@ -269,10 +257,10 @@ mod words_tests {
     fn one_word_with_trailing_space() {
         let (remainder, matched) = words(Span::new(r#"foo "#)).expect("Failed to parse input");
 
-        //assert_eq!(matched.fragment(), &&"foo"[..]);
-        //assert_eq!(matched.location_offset(), 0);
-        //assert_eq!(matched.location_line(), 1);
-        //assert_eq!(matched.get_column(), 1);
+        assert_eq!(matched.fragment(), &&"foo"[..]);
+        assert_eq!(matched.location_offset(), 0);
+        assert_eq!(matched.location_line(), 1);
+        assert_eq!(matched.get_column(), 1);
 
         assert_eq!(remainder.fragment(), &&" "[..]);
         assert_eq!(remainder.location_offset(), 3);
@@ -284,10 +272,10 @@ mod words_tests {
     fn one_word_with_trailing_newline() {
         let (remainder, matched) = words(Span::new(r#"foo\n"#)).expect("Failed to parse input");
 
-        //assert_eq!(matched.fragment(), &&"foo"[..]);
-        //assert_eq!(matched.location_offset(), 0);
-        //assert_eq!(matched.location_line(), 1);
-        //assert_eq!(matched.get_column(), 1);
+        assert_eq!(matched.fragment(), &&"foo"[..]);
+        assert_eq!(matched.location_offset(), 0);
+        assert_eq!(matched.location_line(), 1);
+        assert_eq!(matched.get_column(), 1);
 
         assert_eq!(remainder.fragment(), &&"\\n"[..]);
         assert_eq!(remainder.location_offset(), 3);
@@ -297,12 +285,12 @@ mod words_tests {
 
     #[test]
     fn two_space_separated_words() {
-        let (remainder, matched) = words(Span::new(r#"foo bar\n"#)).expect("Failed to parse input");
+        let (remainder, matched) = words(Span::new(r#"foo bar"#)).expect("Failed to parse input");
 
-        //assert_eq!(matched.fragment(), &&"foo"[..]);
-        //assert_eq!(matched.location_offset(), 0);
-        //assert_eq!(matched.location_line(), 1);
-        //assert_eq!(matched.get_column(), 1);
+        assert_eq!(matched.fragment(), &&"foo"[..]);
+        assert_eq!(matched.location_offset(), 0);
+        assert_eq!(matched.location_line(), 1);
+        assert_eq!(matched.get_column(), 1);
 
         assert_eq!(remainder.fragment(), &&" bar"[..]);
         assert_eq!(remainder.location_offset(), 3);
