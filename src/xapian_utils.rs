@@ -244,20 +244,17 @@ mod word_tests {
 
     #[test]
     fn one_word_with_trailing_space() {
-        ExpectedParseResult::new(&"foo", 0, 1, 1, &" ", 3, 1, 4)
-            .compare(&word, &r#"foo "#)
+        ExpectedParseResult::new(&"foo", 0, 1, 1, &" ", 3, 1, 4).compare(&word, &r#"foo "#)
     }
 
     #[test]
     fn one_word_with_trailing_newline() {
-        ExpectedParseResult::new(&"foo", 0, 1, 1, &"\\n", 3, 1, 4)
-            .compare(&word, &r#"foo\n"#)
+        ExpectedParseResult::new(&"foo", 0, 1, 1, &"\\n", 3, 1, 4).compare(&word, &r#"foo\n"#)
     }
 
     #[test]
     fn two_space_separated_words() {
-        ExpectedParseResult::new(&"foo", 0, 1, 1, &" bar", 3, 1, 4)
-            .compare(&word, &r#"foo bar"#)
+        ExpectedParseResult::new(&"foo", 0, 1, 1, &" bar", 3, 1, 4).compare(&word, &r#"foo bar"#)
     }
 }
 
@@ -276,32 +273,13 @@ mod words_tests {
 
     #[test]
     fn one_word() {
-        let (remainder, matched) = words(Span::new(r#"foo\n"#)).expect("Failed to parse input");
-
-        assert_eq!(matched.fragment(), &&"foo"[..]);
-        assert_eq!(matched.location_offset(), 0);
-        assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
-
-        assert_eq!(remainder.fragment(), &&"\\n"[..]);
-        assert_eq!(remainder.location_offset(), 3);
-        assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 4);
+        ExpectedParseResult::new(&"foo", 0, 1, 1, &"\\n", 3, 1, 4).compare(&words, &r#"foo\n"#)
     }
 
     #[test]
     fn two_space_separated_words() {
-        let (remainder, matched) = words(Span::new(r#"foo bar\n"#)).expect("Failed to parse input");
-
-        assert_eq!(matched.fragment(), &&"foo bar"[..]);
-        assert_eq!(matched.location_offset(), 0);
-        assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
-
-        assert_eq!(remainder.fragment(), &&"\\n"[..]);
-        assert_eq!(remainder.location_offset(), 7);
-        assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 8);
+        ExpectedParseResult::new(&"foo bar", 0, 1, 1, &"\\n", 7, 1, 8)
+            .compare(&words, &r#"foo bar\n"#)
     }
 }
 
@@ -325,94 +303,34 @@ mod quoted_tests {
     use super::*;
     #[test]
     fn one_word_no_trailing_space() {
-        let (remainder, matched) = quoted(Span::new(r#""foo""#)).expect("Failed to parse input");
-
-        assert_eq!(matched.fragment(), &&"\"foo\""[..]);
-        assert_eq!(matched.location_offset(), 0);
-        assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
-
-        assert_eq!(remainder.fragment(), &&""[..]);
-        assert_eq!(remainder.location_offset(), 5);
-        assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 6);
+        ExpectedParseResult::new(&"\"foo\"", 0, 1, 1, &"", 5, 1, 6).compare(&quoted, &r#""foo""#)
     }
 
     #[test]
     fn one_word_with_trailing_space() {
-        let (remainder, matched) = quoted(Span::new(r#""foo ""#)).expect("Failed to parse input");
-
-        assert_eq!(matched.fragment(), &&"\"foo \""[..]);
-        assert_eq!(matched.location_offset(), 0);
-        assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
-
-        assert_eq!(remainder.fragment(), &&""[..]);
-        assert_eq!(remainder.location_offset(), 6);
-        assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 7);
+        ExpectedParseResult::new(&"\"foo \"", 0, 1, 1, &"", 6, 1, 7).compare(&quoted, &r#""foo ""#)
     }
 
     #[test]
     fn two_words() {
-        let (remainder, matched) =
-            quoted(Span::new(r#""foo bar""#)).expect("Failed to parse input");
-
-        assert_eq!(matched.fragment(), &&"\"foo bar\""[..]);
-        assert_eq!(matched.location_offset(), 0);
-        assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
-
-        assert_eq!(remainder.fragment(), &&""[..]);
-        assert_eq!(remainder.location_offset(), 9);
-        assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 10);
+        ExpectedParseResult::new(&"\"foo bar\"", 0, 1, 1, &"", 9, 1, 10)
+            .compare(&quoted, &r#""foo bar""#)
     }
 
     #[test]
     fn single_quote_one_word_no_trailing_space() {
-        let (remainder, matched) = quoted(Span::new(r#"'foo'"#)).expect("Failed to parse input");
-
-        assert_eq!(matched.fragment(), &&"\'foo\'"[..]);
-        assert_eq!(matched.location_offset(), 0);
-        assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
-
-        assert_eq!(remainder.fragment(), &&""[..]);
-        assert_eq!(remainder.location_offset(), 5);
-        assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 6);
+        ExpectedParseResult::new(&"\'foo\'", 0, 1, 1, &"", 5, 1, 6).compare(&quoted, &r#"'foo'"#)
     }
 
     #[test]
     fn single_quote_one_word_with_trailing_space() {
-        let (remainder, matched) = quoted(Span::new(r#"'foo '"#)).expect("Failed to parse input");
-
-        assert_eq!(matched.fragment(), &&"\'foo \'"[..]);
-        assert_eq!(matched.location_offset(), 0);
-        assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
-
-        assert_eq!(remainder.fragment(), &&""[..]);
-        assert_eq!(remainder.location_offset(), 6);
-        assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 7);
+        ExpectedParseResult::new(&"\'foo \'", 0, 1, 1, &"", 6, 1, 7).compare(&quoted, &r#"'foo '"#)
     }
 
     #[test]
     fn single_quote_two_words() {
-        let (remainder, matched) =
-            quoted(Span::new(r#"'foo bar'"#)).expect("Failed to parse input");
-
-        assert_eq!(matched.fragment(), &&"\'foo bar\'"[..]);
-        assert_eq!(matched.location_offset(), 0);
-        assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
-
-        assert_eq!(remainder.fragment(), &&""[..]);
-        assert_eq!(remainder.location_offset(), 9);
-        assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 10);
+        ExpectedParseResult::new(&"\'foo bar\'", 0, 1, 1, &"", 9, 1, 10)
+            .compare(&quoted, &r#"'foo bar'"#)
     }
 }
 
