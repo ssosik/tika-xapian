@@ -54,8 +54,7 @@ impl fmt::Display for XapianTag {
     }
 }
 
-#[allow(dead_code)]
-pub fn xapiantag(input: &str) -> IResult<XapianTag> {
+pub fn xapiantag(input: Span) -> IResult<XapianTag> {
     alt((
         value(XapianTag::Author, tag_no_case("author:")),
         value(XapianTag::Date, tag_no_case("date:")),
@@ -64,7 +63,7 @@ pub fn xapiantag(input: &str) -> IResult<XapianTag> {
         value(XapianTag::Title, tag_no_case("title:")),
         value(XapianTag::Subtitle, tag_no_case("subtitle:")),
         value(XapianTag::Tag, tag_no_case("tag:")),
-    ))(Span::new(input))
+    ))(input)
 }
 
 // Local representation of xapian expression operators, most notably these are Copy!
@@ -219,13 +218,11 @@ impl ExpectedParseResult<'_> {
     fn compare(self, f: &dyn Fn(Span) -> IResult<Span>, s: &str) {
         let (remainder, matched) = f(Span::new(s)).expect("Failed to parse input");
 
-        println!("Matched {}; Remainder {}", *matched, *remainder);
         assert_eq!(&self.matched_fragment, matched.fragment());
         assert_eq!(self.matched_offset, matched.location_offset());
         assert_eq!(self.matched_line, matched.location_line());
         assert_eq!(self.matched_column, matched.get_column());
 
-        // // For debugging:
         assert_eq!(&self.remainder_fragment, remainder.fragment());
         assert_eq!(self.remainder_offset, remainder.location_offset());
         assert_eq!(self.remainder_line, remainder.location_line());
@@ -238,8 +235,7 @@ mod word_tests {
     use super::*;
     #[test]
     fn one_word_no_trailing_space() {
-        let res = word(Span::new(r#"foo"#));
-        assert!(res.is_err())
+        assert!(word(Span::new(r#"foo"#)).is_err())
     }
 
     #[test]
@@ -267,8 +263,7 @@ mod words_tests {
     use super::*;
     #[test]
     fn one_word_no_trailing_newline() {
-        let res = words(Span::new(r#"foo"#));
-        assert!(res.is_err())
+        assert!(words(Span::new(r#"foo"#)).is_err())
     }
 
     #[test]
@@ -332,10 +327,65 @@ mod quoted_tests {
         ExpectedParseResult::new(&"\'foo bar\'", 0, 1, 1, &"", 9, 1, 10)
             .compare(&quoted, &r#"'foo bar'"#)
     }
+
+    #[test]
+    fn tag_entirely_single_quoted() {
+        // The colon character currently isn't an allowed `word` character
+        assert!(tagged(Span::new(r#"'foo:bar'"#)).is_err())
+    }
+
+    #[test]
+    fn tag_entirely_double_quoted() {
+        // The colon character currently isn't an allowed `word` character
+        assert!(tagged(Span::new(r#""foo:bar""#)).is_err())
+    }
 }
 
 fn tagged(input: Span) -> IResult<Span> {
     recognize(separated_pair(word, tag(":"), alt((quoted, word))))(input)
+}
+
+#[cfg(test)]
+mod tagged_tests {
+    use super::*;
+    #[test]
+    fn one_word_no_trailing_space() {
+        assert!(tagged(Span::new(r#"foo:bar"#)).is_err())
+    }
+
+    #[test]
+    fn one_word_with_trailing_space() {
+        ExpectedParseResult::new(&"foo:bar", 0, 1, 1, &" ", 7, 1, 8)
+            .compare(&tagged, &r#"foo:bar "#)
+    }
+
+    #[test]
+    fn two_words() {
+        ExpectedParseResult::new(&"tag:foo", 0, 1, 1, &" bar", 7, 1, 8)
+            .compare(&tagged, &r#"tag:foo bar"#)
+    }
+
+    #[test]
+    fn two_words_single_quoted() {
+        ExpectedParseResult::new(&"tag:\'foo bar\'", 0, 1, 1, &"", 13, 1, 14)
+            .compare(&tagged, &r#"tag:'foo bar'"#)
+    }
+
+    #[test]
+    fn two_words_double_quoted() {
+        ExpectedParseResult::new(&"tag:\"foo bar\"", 0, 1, 1, &"", 13, 1, 14)
+            .compare(&tagged, &r#"tag:"foo bar""#)
+    }
+
+    #[test]
+    fn tag_entirely_single_quoted() {
+        assert!(tagged(Span::new(r#"'foo:bar'"#)).is_err())
+    }
+
+    #[test]
+    fn tag_entirely_double_quoted() {
+        assert!(tagged(Span::new(r#""foo:bar""#)).is_err())
+    }
 }
 
 //fn expression(input: Span) -> IResult<Span> {
