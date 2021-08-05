@@ -3,8 +3,8 @@ use color_eyre::Report;
 #[allow(unused)]
 use nom::{
     bytes::streaming::{is_not, tag, tag_no_case},
-    character::streaming::{alphanumeric0, alphanumeric1, space0, multispace0, multispace1},
-    combinator::{recognize,value},
+    character::streaming::{alphanumeric0, alphanumeric1, multispace0, multispace1, space0},
+    combinator::{recognize, value},
     multi::{many0, many1},
     sequence::{delimited, tuple},
     {alt, branch::alt, complete, delimited, named, tag, take_until, value}, // {IResult},
@@ -285,7 +285,11 @@ mod words_tests {
 }
 
 fn quoted(input: Span) -> IResult<Span> {
-   delimited(tag(r#"""#), words, tag(r#"""#))(input)
+    recognize(delimited(
+        recognize(tag(r#"""#)),
+        recognize(words),
+        recognize(tag(r#"""#)),
+    ))(input)
 }
 
 #[cfg(test)]
@@ -295,10 +299,10 @@ mod quoted_tests {
     fn one_word_no_trailing_space() {
         let (remainder, matched) = quoted(Span::new(r#""foo""#)).expect("Failed to parse input");
 
-        assert_eq!(matched.fragment(), &&"foo"[..]);
-        assert_eq!(matched.location_offset(), 1);
+        assert_eq!(matched.fragment(), &&"\"foo\""[..]);
+        assert_eq!(matched.location_offset(), 0);
         assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 2);
+        assert_eq!(matched.get_column(), 1);
 
         assert_eq!(remainder.fragment(), &&""[..]);
         assert_eq!(remainder.location_offset(), 5);
@@ -310,10 +314,10 @@ mod quoted_tests {
     fn one_word_with_trailing_space() {
         let (remainder, matched) = quoted(Span::new(r#""foo ""#)).expect("Failed to parse input");
 
-        assert_eq!(matched.fragment(), &&"foo "[..]);
-        assert_eq!(matched.location_offset(), 1);
+        assert_eq!(matched.fragment(), &&"\"foo \""[..]);
+        assert_eq!(matched.location_offset(), 0);
         assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 2);
+        assert_eq!(matched.get_column(), 1);
 
         assert_eq!(remainder.fragment(), &&""[..]);
         assert_eq!(remainder.location_offset(), 6);
@@ -321,7 +325,6 @@ mod quoted_tests {
         assert_eq!(remainder.get_column(), 7);
     }
 }
-
 
 //fn tagged(input: Span) -> IResult<&str, Vec<(Vec<&str>, &str, Vec<&str>)>> {
 //    many1(tuple((word, tag(":"), alt((word, quoted)))))(input)
