@@ -463,8 +463,13 @@ fn operator(input: Span) -> IResult<Span> {
 fn expression(input: &str) -> Vec<Query> {
     //recognize(many1(alt((quoted, tagged, word, multispace1))))(input)
     let ret = vec![];
-    let res = many1(alt((quoted, tagged, words, multispace1, operator)))(Span::new(input));
-    println!("RESULT: {:?}", res);
+    let res = many1(alt((quoted, operator, tagged, words)))(Span::new(input));
+    if let Ok((rest, matched)) = res {
+        for item in matched {
+            println!("Match item: {}", *item);
+        }
+        println!("Rest: {}", *rest);
+    }
     //if let Ok((rest::<&str>, matched::<Vec<Span>>)) = many1(alt((quoted, XapianTag::parse, words, multispace1)), matchop) {
     //    println!("REST: {} MATCHED: {}", rest, matched);
     //}
@@ -476,7 +481,7 @@ mod expression_tests {
     use super::*;
     #[test]
     fn test() {
-        expression(&r#"tag:foo "baz bar" qux AND steve\n"#);
+        expression(&r#"tag:foo "baz bar" qux bux AND hee hee hee\n"#);
         assert!(false);
     }
 }
