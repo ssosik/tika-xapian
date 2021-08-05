@@ -422,9 +422,24 @@ mod xapiantag_tests {
     }
 }
 
-//fn expression(input: Span) -> IResult<Span> {
-//    tuple((word, matchop, alt((word, quoted))))(input)
-//}
+fn expression(input: Span) -> IResult<Span> {
+    recognize(many1(alt((quoted, tagged, word, multispace1))))(input)
+}
+
+#[cfg(test)]
+mod expression_tests {
+    use super::*;
+    #[test]
+    fn one_word_no_trailing_space() {
+        assert!(expression(Span::new(r#"foo baz bar"#)).is_err())
+    }
+
+    #[test]
+    fn one_word_with_trailing_newline() {
+        ExpectedParseResult::new(&"foo baz bar", 0, 1, 1, &"\\n", 11, 1, 12)
+            .compare(&expression, &r#"foo baz bar\n"#)
+    }
+}
 
 // TODO is there a better way to handle case insensitity here?
 named!(
