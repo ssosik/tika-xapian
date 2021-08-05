@@ -503,11 +503,12 @@ mod expression_tests {
 
         if let Ok((rest, matched)) = take_up_to_operator(r#"fooobarr AND foo AND bar\n"#.as_bytes())
         {
-            println!(
-                "UNTILOP: Matched: {:?} Rest:{:?}",
-                str::from_utf8(matched),
-                str::from_utf8(rest)
-            );
+            let matched = str::from_utf8(matched).expect("Failed to convert [u8] to str");
+            let rest = str::from_utf8(rest).expect("Failed to convert [u8] to str");
+            println!("UNTILOP: {} Rest:{}", matched, rest);
+            if let Ok((rest, op)) = matchop(rest) {
+                println!("OP: {} Rest:{}", op, rest);
+            }
         }
 
         assert!(false);
