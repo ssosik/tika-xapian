@@ -368,6 +368,21 @@ impl XapianTag {
             XapianTag::Tag => "K",
         }
     }
+    pub fn parse(input: Span) -> IResult<(XapianTag, Span)> {
+        separated_pair(
+            alt((
+                value(XapianTag::Author, tag_no_case("author")),
+                value(XapianTag::Date, tag_no_case("date")),
+                value(XapianTag::Filename, tag_no_case("filename")),
+                value(XapianTag::Fullpath, tag_no_case("fullpath")),
+                value(XapianTag::Title, tag_no_case("title")),
+                value(XapianTag::Subtitle, tag_no_case("subtitle")),
+                value(XapianTag::Tag, tag_no_case("tag")),
+            )),
+            tag(":"),
+            alt((quoted, word)),
+        )(input)
+    }
 }
 
 impl fmt::Display for XapianTag {
@@ -376,38 +391,22 @@ impl fmt::Display for XapianTag {
     }
 }
 
-pub fn xapiantag(input: Span) -> IResult<(XapianTag, Span)> {
-    separated_pair(
-        alt((
-            value(XapianTag::Author, tag_no_case("author")),
-            value(XapianTag::Date, tag_no_case("date")),
-            value(XapianTag::Filename, tag_no_case("filename")),
-            value(XapianTag::Fullpath, tag_no_case("fullpath")),
-            value(XapianTag::Title, tag_no_case("title")),
-            value(XapianTag::Subtitle, tag_no_case("subtitle")),
-            value(XapianTag::Tag, tag_no_case("tag")),
-        )),
-        tag(":"),
-        alt((quoted, word)),
-    )(input)
-}
-
 mod xapiantag_tests {
     use super::*;
     #[test]
     fn unrecognized_tag() {
-        assert!(xapiantag(Span::new(r#"foo:bar"#)).is_err())
+        assert!(XapianTag::parse(Span::new(r#"foo:bar"#)).is_err())
     }
 
     #[test]
     fn tag_no_trailing_whitespace() {
-        assert!(xapiantag(Span::new(r#"author:bar"#)).is_err())
+        assert!(XapianTag::parse(Span::new(r#"author:bar"#)).is_err())
     }
 
     #[test]
     fn one_word_tag() {
         let (remainder, (tag, value)) =
-            xapiantag(Span::new(r#"author:bar "#)).expect("Failed to parse input");
+            XapianTag::parse(Span::new(r#"author:bar "#)).expect("Failed to parse input");
         assert_eq!("A", tag.to_xapian());
         assert_eq!(&"bar", value.fragment());
         assert_eq!(&" ", remainder.fragment());
@@ -416,7 +415,7 @@ mod xapiantag_tests {
     #[test]
     fn two_word_tag() {
         let (remainder, (tag, value)) =
-            xapiantag(Span::new(r#"author:bar other"#)).expect("Failed to parse input");
+            XapianTag::parse(Span::new(r#"author:bar other"#)).expect("Failed to parse input");
         assert_eq!("A", tag.to_xapian());
         assert_eq!(&"bar", value.fragment());
         assert_eq!(&" other", remainder.fragment());
