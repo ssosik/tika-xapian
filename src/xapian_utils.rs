@@ -241,35 +241,20 @@ mod word_tests {
 }
 
 fn words(input: Span) -> IResult<Span> {
-    alt((multispace1, word))(input)
+    recognize(many1(alt((recognize(multispace1), recognize(word)))))(input)
 }
 
 #[cfg(test)]
 mod words_tests {
     use super::*;
     #[test]
-    fn one_word_no_trailing_space() {
+    fn one_word_no_trailing_newline() {
         let res = words(Span::new(r#"foo"#));
         assert!(res.is_err())
     }
 
     #[test]
-    fn one_word_with_trailing_space() {
-        let (remainder, matched) = words(Span::new(r#"foo "#)).expect("Failed to parse input");
-
-        assert_eq!(matched.fragment(), &&"foo"[..]);
-        assert_eq!(matched.location_offset(), 0);
-        assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
-
-        assert_eq!(remainder.fragment(), &&" "[..]);
-        assert_eq!(remainder.location_offset(), 3);
-        assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 4);
-    }
-
-    #[test]
-    fn one_word_with_trailing_newline() {
+    fn one_word() {
         let (remainder, matched) = words(Span::new(r#"foo\n"#)).expect("Failed to parse input");
 
         assert_eq!(matched.fragment(), &&"foo"[..]);
@@ -285,17 +270,17 @@ mod words_tests {
 
     #[test]
     fn two_space_separated_words() {
-        let (remainder, matched) = words(Span::new(r#"foo bar"#)).expect("Failed to parse input");
+        let (remainder, matched) = words(Span::new(r#"foo bar\n"#)).expect("Failed to parse input");
 
-        assert_eq!(matched.fragment(), &&"foo"[..]);
+        assert_eq!(matched.fragment(), &&"foo bar"[..]);
         assert_eq!(matched.location_offset(), 0);
         assert_eq!(matched.location_line(), 1);
         assert_eq!(matched.get_column(), 1);
 
-        assert_eq!(remainder.fragment(), &&" bar"[..]);
-        assert_eq!(remainder.location_offset(), 3);
+        assert_eq!(remainder.fragment(), &&"\\n"[..]);
+        assert_eq!(remainder.location_offset(), 7);
         assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 4);
+        assert_eq!(remainder.get_column(), 8);
     }
 }
 
@@ -325,15 +310,15 @@ mod quoted_tests {
     fn one_word_with_trailing_space() {
         let (remainder, matched) = quoted(Span::new(r#""foo ""#)).expect("Failed to parse input");
 
-        assert_eq!(matched.fragment(), &&"foo"[..]);
-        assert_eq!(matched.location_offset(), 0);
+        assert_eq!(matched.fragment(), &&"foo "[..]);
+        assert_eq!(matched.location_offset(), 1);
         assert_eq!(matched.location_line(), 1);
-        assert_eq!(matched.get_column(), 1);
+        assert_eq!(matched.get_column(), 2);
 
-        assert_eq!(remainder.fragment(), &&" "[..]);
-        assert_eq!(remainder.location_offset(), 3);
+        assert_eq!(remainder.fragment(), &&""[..]);
+        assert_eq!(remainder.location_offset(), 6);
         assert_eq!(remainder.location_line(), 1);
-        assert_eq!(remainder.get_column(), 4);
+        assert_eq!(remainder.get_column(), 7);
     }
 }
 
