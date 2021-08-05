@@ -142,10 +142,10 @@ struct ExpectedParseResult<'a> {
     matched_offset: usize,
     matched_line: u32,
     matched_column: usize,
-    remainder_fragment: &'a str,
-    remainder_offset: usize,
-    remainder_line: u32,
-    remainder_column: usize,
+    rest_fragment: &'a str,
+    rest_offset: usize,
+    rest_line: u32,
+    rest_column: usize,
 }
 
 impl ExpectedParseResult<'_> {
@@ -164,24 +164,24 @@ impl ExpectedParseResult<'_> {
             matched_offset: mo,
             matched_line: ml,
             matched_column: mc,
-            remainder_fragment: rf,
-            remainder_offset: ro,
-            remainder_line: rl,
-            remainder_column: rc,
+            rest_fragment: rf,
+            rest_offset: ro,
+            rest_line: rl,
+            rest_column: rc,
         }
     }
     fn compare(self, f: &dyn Fn(Span) -> IResult<Span>, s: &str) {
-        let (remainder, matched) = f(Span::new(s)).expect("Failed to parse input");
+        let (rest, matched) = f(Span::new(s)).expect("Failed to parse input");
 
         assert_eq!(&self.matched_fragment, matched.fragment());
         assert_eq!(self.matched_offset, matched.location_offset());
         assert_eq!(self.matched_line, matched.location_line());
         assert_eq!(self.matched_column, matched.get_column());
 
-        assert_eq!(&self.remainder_fragment, remainder.fragment());
-        assert_eq!(self.remainder_offset, remainder.location_offset());
-        assert_eq!(self.remainder_line, remainder.location_line());
-        assert_eq!(self.remainder_column, remainder.get_column());
+        assert_eq!(&self.rest_fragment, rest.fragment());
+        assert_eq!(self.rest_offset, rest.location_offset());
+        assert_eq!(self.rest_line, rest.location_line());
+        assert_eq!(self.rest_column, rest.get_column());
     }
 }
 
@@ -405,39 +405,79 @@ mod xapiantag_tests {
 
     #[test]
     fn one_word_tag() {
-        let (remainder, (tag, value)) =
+        let (rest, (tag, value)) =
             XapianTag::parse(Span::new(r#"author:bar "#)).expect("Failed to parse input");
         assert_eq!("A", tag.to_xapian());
         assert_eq!(&"bar", value.fragment());
-        assert_eq!(&" ", remainder.fragment());
+        assert_eq!(&" ", rest.fragment());
     }
 
     #[test]
     fn two_word_tag() {
-        let (remainder, (tag, value)) =
+        let (rest, (tag, value)) =
             XapianTag::parse(Span::new(r#"author:bar other"#)).expect("Failed to parse input");
         assert_eq!("A", tag.to_xapian());
         assert_eq!(&"bar", value.fragment());
-        assert_eq!(&" other", remainder.fragment());
+        assert_eq!(&" other", rest.fragment());
     }
 }
 
-fn expression(input: Span) -> IResult<Span> {
-    recognize(many1(alt((quoted, tagged, word, multispace1))))(input)
+fn operator(input: Span) -> IResult<Span> {
+    recognize(alt((
+        tag_no_case("AND NOT"),
+        tag_no_case("AND"),
+        tag_no_case("XOR"),
+        tag_no_case("OR"),
+        tag_no_case("AND MAYBE"),
+        tag_no_case("FILTER"),
+        tag_no_case("NEAR"),
+        tag_no_case("PHRASE"),
+        tag_no_case("RANGE"),
+        tag_no_case("SCALED"),
+        tag_no_case("ELITE"),
+        tag_no_case(">"),
+        tag_no_case("<"),
+        tag_no_case("SYNONYM"),
+    )))(input)
+}
+
+//fn expression(input: Span) -> IResult<Span> {
+//    recognize(many1(alt((quoted, tagged, word, multispace1))))(input)
+//}
+//
+//#[cfg(test)]
+//mod expression_tests {
+//    use super::*;
+//    #[test]
+//    fn one_word_no_trailing_space() {
+//        assert!(expression(Span::new(r#"foo baz bar"#)).is_err())
+//    }
+//
+//    #[test]
+//    fn one_word_with_trailing_newline() {
+//        ExpectedParseResult::new(&"foo baz bar", 0, 1, 1, &"\\n", 11, 1, 12)
+//            .compare(&expression, &r#"foo baz bar\n"#)
+//    }
+//}
+
+fn expression(input: &str) -> Vec<Query> {
+    //recognize(many1(alt((quoted, tagged, word, multispace1))))(input)
+    let ret = vec![];
+    let res = many1(alt((quoted, tagged, words, multispace1, operator)))(Span::new(input));
+    println!("RESULT: {:?}", res);
+    //if let Ok((rest::<&str>, matched::<Vec<Span>>)) = many1(alt((quoted, XapianTag::parse, words, multispace1)), matchop) {
+    //    println!("REST: {} MATCHED: {}", rest, matched);
+    //}
+    ret
 }
 
 #[cfg(test)]
 mod expression_tests {
     use super::*;
     #[test]
-    fn one_word_no_trailing_space() {
-        assert!(expression(Span::new(r#"foo baz bar"#)).is_err())
-    }
-
-    #[test]
-    fn one_word_with_trailing_newline() {
-        ExpectedParseResult::new(&"foo baz bar", 0, 1, 1, &"\\n", 11, 1, 12)
-            .compare(&expression, &r#"foo baz bar\n"#)
+    fn test() {
+        expression(&r#"tag:foo "baz bar" qux AND steve\n"#);
+        assert!(false);
     }
 }
 
@@ -480,10 +520,10 @@ pub fn parse_user_query(mut qstr: LocatedSpan<&str>) -> Result<Query, Report> {
         //println!("Processing '{}'", qstr);
 
         match take_up_to_operator(qstr.as_bytes()) {
-            Ok((remaining, current)) => {
+            Ok((rest, current)) => {
                 let curr_query = str::from_utf8(&current)?;
                 //println!("Took Query up to operator: '{}'", curr_query);
-                qstr = Span::new(str::from_utf8(&remaining)?);
+                qstr = Span::new(str::from_utf8(&rest)?);
                 if query.is_none() {
                     let q = qp
                         .parse_query(curr_query, flags)
@@ -529,10 +569,10 @@ pub fn parse_user_query(mut qstr: LocatedSpan<&str>) -> Result<Query, Report> {
 
         //println!("MATCH OP: {}", qstr);
         match matchop(&qstr) {
-            Ok((remaining, op)) => {
+            Ok((rest, op)) => {
                 // Convert MatchOp into Some(XapianOp)
                 operator = Some(op.into());
-                qstr = remaining
+                qstr = rest
             }
             Err(_) => {
                 //eprintln!("Match Op error: '{}' in '{}'", e, qstr);
