@@ -4,7 +4,7 @@ use color_eyre::Report;
 use nom::{
     bytes::streaming::{is_not, tag, tag_no_case},
     character::streaming::{alphanumeric0, alphanumeric1, space0, multispace0, multispace1},
-    combinator::value,
+    combinator::{recognize,value},
     multi::{many0, many1},
     sequence::{delimited, tuple},
     {alt, branch::alt, complete, delimited, named, tag, take_until, value}, // {IResult},
@@ -177,9 +177,12 @@ pub type IResult<'a, O> = nom::IResult<Span<'a>, O>;
 
 #[allow(dead_code)]
 fn word(input: Span) -> IResult<Span> {
-    // TODO should more characters be supported on a "word"?
-    let (rem, mat) = many1(alt((alphanumeric1, tag("_"))))(input)?;
-    Ok((rem, mat[0]))
+    // TODO should more characters be supported in a "word"?
+    // Use `recognize` here to discard the actual parsed value and return the matched substring as
+    // a result
+    recognize(many1(alt((recognize(alphanumeric1), recognize(tag("_"))))))(input)
+    //let (rem, mat) = many1(alt((recognize(alphanumeric1), recognize(tag("_")))))(input)?;
+    //Ok((rem, mat[0]))
 }
 
 #[cfg(test)]
@@ -240,16 +243,17 @@ mod word_tests {
 }
 
 fn words(input: Span) -> IResult<Span> {
-    let (rem, mat) = many1(alt((multispace1, word)))(input)?;
-    println!("WORDS Rem: {:?} Mat:{:?}", rem, mat);
-    let mut result: &str = "";
-    for s in mat {
-        result = &format!("{} {}", result, s.fragment());
-    }
-    return Ok((rem, Span::new(result.clone())));
+    alt((multispace1, word))(input)
+    //let (rem, mat) = many1(alt((multispace1, word)))(input)?;
+    //println!("WORDS Rem: {:?} Mat:{:?}", rem, mat);
+    //let mut result: &str = "";
+    //for s in mat {
+    //    result = &format!("{} {}", result, s.fragment());
+    //}
+    //return Ok((rem, Span::new(&mat[0])));
+    //////let mat =mat.into_iter().map(|l| *l.fragment()).flat_map(|s| s.chars()).collect();
     ////let mat =mat.into_iter().map(|l| *l.fragment()).flat_map(|s| s.chars()).collect();
-    //let mat =mat.into_iter().map(|l| *l.fragment()).flat_map(|s| s.chars()).collect();
-    //Ok((rem, Span::new(mat)))
+    ////Ok((rem, Span::new(mat)))
 }
 
 #[cfg(test)]
