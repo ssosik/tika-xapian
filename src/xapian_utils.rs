@@ -501,10 +501,10 @@ mod expression_tests {
         //);
         //println!("OP: {:?}", operator(Span::new(r#"AND foo bar AND qux\n"#)));
 
-        let mut query_str = r#"'eep op' tag:meh fooobarr AND maybe maybe foo AND bar\n"#;
+        let query_str = r#"'eep op' tag:meh fooobarr AND maybe maybe foo AND bar\n"#;
         match parse_query(query_str) {
-            Ok(query) => {
-                println!("OK");
+            Ok(mut query) => {
+                println!("Query Ok: {}", query.get_description());
             }
             Err(e) => {
                 println!("Err: {}", e);
@@ -557,15 +557,15 @@ fn parse_query(mut qstr: &str) -> Result<Query, Report> {
     // Create the initial query
     match take_up_to_operator(qstr.as_bytes()) {
         Ok((rest, matched)) => {
-            println!(r#"initial match: "{}""#, str::from_utf8(matched)?);
+            //println!(r#"initial match: "{}""#, str::from_utf8(matched)?);
             query = qp.parse_query(str::from_utf8(matched)?, flags)?;
             qstr = str::from_utf8(rest)?;
         }
-        Err(e) => {
+        Err(_) => {
             // No operator found in the initial string, return a query for the entire string
             // TODO add support here for Tags
-            println!("no initial match: {}", e);
-            return Ok((qp.parse_query(qstr, flags)?));
+            //println!("no initial match: {}", e);
+            return Ok(qp.parse_query(qstr, flags)?);
         }
     }
 
@@ -587,7 +587,7 @@ fn parse_query(mut qstr: &str) -> Result<Query, Report> {
         // Add to the query
         match take_up_to_operator(qstr.as_bytes()) {
             Ok((rest, matched)) => {
-                println!("add to query: {} {}", operator, str::from_utf8(matched)?);
+                //println!("add to query: {} {}", operator, str::from_utf8(matched)?);
 
                 query = query.add_right(
                     operator.into(),
@@ -595,9 +595,9 @@ fn parse_query(mut qstr: &str) -> Result<Query, Report> {
                 )?;
                 qstr = str::from_utf8(rest)?;
             }
-            Err(e) => {
+            Err(_) => {
                 // TODO add support here for Tags
-                println!("add to query: {} {}", operator, qstr);
+                //println!("add to query: {} {}", operator, qstr);
                 query = query.add_right(operator.into(), &mut qp.parse_query(qstr, flags)?)?;
 
                 // No more operators found, break out of the loop
@@ -620,9 +620,7 @@ fn parse_query(mut qstr: &str) -> Result<Query, Report> {
         }
     }
 
-    println!("Query description: {}", query.get_description());
-
-    Ok((query))
+    Ok(query)
 }
 
 // TODO is there a better way to handle case insensitity here?
