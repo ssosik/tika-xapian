@@ -555,15 +555,17 @@ mod expression_tests {
 mod query_tests {
     use super::*;
     #[test]
-    //fn test1() {
-    //    let query_str = r#"eep op tag:meh fooobarr AND maybe maybe foo AND bar\n"#;
-    //    let mut result = parse_user_query(query_str).expect("Failed to parse");
-    //    assert_eq!(
-    //        "Query((((Zeep@1 OR Zop@2 OR (tag@3 PHRASE 2 meh@4) OR Zfooobarr@5) AND_MAYBE (Zmayb@1 OR Zfoo@2)) AND (bar@1 PHRASE 2 n@2)))",
-    //        //"Query(((((eep@1 PHRASE 2 op@2) OR (tag@3 PHRASE 2 meh@4) OR Zfooobarr@5) AND_MAYBE (Zmayb@1 OR Zfoo@2)) AND (bar@1 PHRASE 2 n@2)))",
-    //        result.get_description()
-    //    );
-    //}
+    #[ignore] // TODO figure out why this fails
+    fn test1() {
+        let query_str = r#"eep op tag:meh fooobarr AND maybe maybe foo AND bar\n"#;
+        let mut result = parse_user_query(query_str).expect("Failed to parse");
+        assert_eq!(
+            "Query((((Zeep@1 OR Zop@2 OR (tag@3 PHRASE 2 meh@4) OR Zfooobarr@5) AND_MAYBE (Zmayb@1 OR Zfoo@2)) AND (bar@1 PHRASE 2 n@2)))",
+            //"Query(((((eep@1 PHRASE 2 op@2) OR (tag@3 PHRASE 2 meh@4) OR Zfooobarr@5) AND_MAYBE (Zmayb@1 OR Zfoo@2)) AND (bar@1 PHRASE 2 n@2)))",
+            result.get_description()
+        );
+    }
+
     #[test]
     fn test2() {
         let query_str = r#""eep op" tag:meh fooobarr AND maybe maybe foo AND bar\n"#;
