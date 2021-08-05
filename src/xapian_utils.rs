@@ -2,11 +2,11 @@ use crate::tika_document::TikaDocument;
 use color_eyre::Report;
 #[allow(unused)]
 use nom::{
-    bytes::streaming::{is_not, tag, tag_no_case},
+    bytes::streaming::{is_not, tag, tag_no_case, take_until},
     character::streaming::{alphanumeric0, alphanumeric1, multispace0, multispace1, space0},
     combinator::{recognize, value},
     multi::{many0, many1},
-    sequence::{delimited, separated_pair, tuple},
+    sequence::{delimited, pair, separated_pair, tuple},
     {alt, branch::alt, complete, delimited, named, tag, take_until, value}, // {IResult},
 };
 use std::convert::From;
@@ -461,19 +461,28 @@ fn operator(input: Span) -> IResult<Span> {
 //}
 
 fn expression(input: &str) -> Vec<Query> {
-    //recognize(many1(alt((quoted, tagged, word, multispace1))))(input)
     let ret = vec![];
-    let res = many1(alt((quoted, operator, tagged, words)))(Span::new(input));
+    let res = many1(alt((operator, quoted, tagged, words)))(Span::new(input));
     if let Ok((rest, matched)) = res {
         for item in matched {
             println!("Match item: {}", *item);
         }
         println!("Rest: {}", *rest);
     }
-    //if let Ok((rest::<&str>, matched::<Vec<Span>>)) = many1(alt((quoted, XapianTag::parse, words, multispace1)), matchop) {
-    //    println!("REST: {} MATCHED: {}", rest, matched);
-    //}
     ret
+}
+
+fn take_until_operator(input: &str) -> IResult<Span> {
+    recognize(alt((
+        take_until("AND NOT"),
+        take_until("and not"),
+        take_until("AND"),
+        take_until("and"),
+        take_until("XOR"),
+        take_until("xor"),
+        take_until("OR"),
+        take_until("OR"),
+    )))(Span::new(input))
 }
 
 #[cfg(test)]
@@ -481,7 +490,26 @@ mod expression_tests {
     use super::*;
     #[test]
     fn test() {
-        expression(&r#"tag:foo "baz bar" qux bux AND hee hee hee\n"#);
+        //expression(&r#"tag:foo "baz bar" AND hee "hee hee"\n"#);
+        //expression(&r#"foo AND bar\n"#);
+        //expression(&r#"tag:foo AND hee "hee hee"\n"#);
+        //expression(&r#"her her her AND hee "hee hee"\n"#);
+        //expression(&r#"her her her AND author:blob bpob\n"#);
+        //println!(
+        //    "OP: {:?}",
+        //    operator(Span::new(r#"her her her AND author:blob bpob\n"#))
+        //);
+        //println!("OP: {:?}", operator(Span::new(r#"AND foo bar AND qux\n"#)));
+
+        if let Ok((rest, matched)) = take_up_to_operator(r#"fooobarr AND foo AND bar\n"#.as_bytes())
+        {
+            println!(
+                "UNTILOP: Matched: {:?} Rest:{:?}",
+                str::from_utf8(matched),
+                str::from_utf8(rest)
+            );
+        }
+
         assert!(false);
     }
 }
