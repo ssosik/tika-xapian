@@ -632,12 +632,12 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
                 )?;
                 qstr = str::from_utf8(rest)?;
             }
-            Err(_) => {
+            Err(_e) => {
+                // There are no more operators, parse the rest of the string into a query and break
                 query = query.add_right(
                     operator.into(),
                     &mut expression_into_query(qp, flags, qstr)?,
                 )?;
-
                 // No more operators found, break out of the loop
                 break;
             }

@@ -222,11 +222,11 @@ pub fn interactive_query() -> Result<Vec<String>, Report> {
                 _ => {}
             }
 
-            let mut owned_string: String = app.input.to_owned();
-            let borrowed_string: &str = "\n";
-            owned_string.push_str(borrowed_string);
+            // Add a trailing ` ;` to the query to hint to Nom that it has a "full" string
+            let mut inp: String = app.input.to_owned();
+            inp.push_str(&" ;");
 
-            match xapian_utils::parse_user_query(&owned_string) {
+            match xapian_utils::parse_user_query(&inp) {
                 Ok(mut query) => {
                     app.query = query.get_description();
                     app.matches = xapian_utils::query_db(query)?;
