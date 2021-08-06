@@ -322,14 +322,12 @@ mod tagged_tests {
             .compare(&tagged, &r#"tag:foo bar"#)
     }
 
-    //#[ignore] // TODO figure out why this fails
     #[test]
     fn two_words_single_quoted() {
         ExpectedParseResult::new(&"tag:\'foo bar\'", 0, 1, 1, &"\\n", 13, 1, 14)
             .compare(&tagged, &r#"tag:'foo bar'\n"#)
     }
 
-    //#[ignore] // TODO figure out why this fails
     #[test]
     fn two_words_double_quoted() {
         ExpectedParseResult::new(&"tag:\"foo bar\"", 0, 1, 1, &"\\n", 13, 1, 14)
@@ -497,51 +495,41 @@ fn whitespace(input: Span) -> IResult<Span> {
     recognize(many1(complete_multispace1))(input)
 }
 
+fn span_into_query(qp: &mut QueryParser, flags: i16, token: Span) -> Result<Query, Report> {
+    match XapianTag::parse(token) {
+        Ok((_rest, (tag, value))) => {
+            //println!("TAG: {} {} {}", tag.to_xapian(), value, _rest);
+            Ok(qp.parse_query_with_prefix(&value, flags, tag.to_xapian())?)
+        }
+        Err(_e) => {
+            //println!("Span: {} Error: {}", token, e);
+            Ok(qp.parse_query(*token, flags)?)
+        }
+    }
+}
+
 fn expression_into_query(
     mut qp: QueryParser,
     flags: i16,
     qstr: &'static str,
 ) -> Result<Query, Report> {
+    // Parse the query string into a Vec of matches
     let (_rest, matches) = expression(Span::new(qstr))?;
-    println!("Spans: {:?}", matches);
-
     let mut matches = matches.into_iter();
     let token = matches.next();
     if token.is_none() {
         return Err(eyre!("Empty expression"));
     }
-    let token = token.unwrap();
 
-    let mut query = match XapianTag::parse(token) {
-        Ok((_rest, (tag, value))) => {
-            //println!("TAG: {} {} {}", tag.to_xapian(), value, _rest);
-            qp.parse_query_with_prefix(&value, flags, tag.to_xapian())?
-        }
-        Err(_e) => {
-            //println!("Span: {} Error: {}", token, e);
-            qp.parse_query(*token, flags)?
-        }
-    };
+    let mut query = span_into_query(&mut qp, flags, token.unwrap())?;
 
-    for token in matches.into_iter() {
+    for token in matches {
         // Skip whitespace-only tokens
         if let Ok(_) = whitespace(token) {
             continue;
         }
 
-        query = query.add_right(
-            XapianOp::OpOr,
-            &mut match XapianTag::parse(token) {
-                Ok((_rest, (tag, value))) => {
-                    //println!("TAG: {} {} {}", tag.to_xapian(), value, _rest);
-                    qp.parse_query_with_prefix(&value, flags, tag.to_xapian())?
-                }
-                Err(_e) => {
-                    //println!("Span: {} Error: {}", token, e);
-                    qp.parse_query(*token, flags)?
-                }
-            },
-        )?;
+        query = query.add_right(XapianOp::OpOr, &mut span_into_query(&mut qp, flags, token)?)?;
     }
 
     Ok(query)
@@ -551,7 +539,7 @@ fn expression_into_query(
 mod expression_tests {
     use super::*;
     #[test]
-    fn test() {
+    fn example1() {
         let mut qp = QueryParser::new().expect("Failed to create queryparser");
         let mut stem = Stem::new("en").expect("Failed to create stemmer");
         qp.set_stemmer(&mut stem).expect("Failed to set stemmer");
@@ -565,14 +553,55 @@ mod expression_tests {
             | FlagPartial as i16
             | FlagSpellingCorrection as i16;
 
-        //let s = &r#"title:foo "baz bar" author:"bob alice" hee tag:rust "hee hee"\n"#;
         let s = &r#"title:foo  baz bar author:bob hee tag:rust "hee hee hee" \n"#;
-        //let s = &r#"title:foo author:bob tag:rust \n"#;
-
         let mut query = expression_into_query(qp, flags, s).expect("Failed to parse");
-
         assert_eq!("Query((((((((WILDCARD SYNONYM Sfoo OR ZSfoo@1) OR (WILDCARD SYNONYM baz OR Zbaz@1)) OR (WILDCARD SYNONYM bar OR Zbar@1)) OR (WILDCARD SYNONYM Abob OR ZAbob@1)) OR (WILDCARD SYNONYM hee OR Zhee@1)) OR (WILDCARD SYNONYM Krust OR ZKrust@1)) OR (hee@1 PHRASE 3 hee@2 PHRASE 3 hee@3)))",
-        query.get_description());
+        query.get_description(),
+        "Generated query didn't match expected for input string '{}'", s);
+    }
+
+    #[test]
+    fn example2() {
+        let mut qp = QueryParser::new().expect("Failed to create queryparser");
+        let mut stem = Stem::new("en").expect("Failed to create stemmer");
+        qp.set_stemmer(&mut stem).expect("Failed to set stemmer");
+
+        let flags = FlagBoolean as i16
+            | FlagPhrase as i16
+            | FlagLovehate as i16
+            | FlagBooleanAnyCase as i16
+            | FlagWildcard as i16
+            | FlagPureNot as i16
+            | FlagPartial as i16
+            | FlagSpellingCorrection as i16;
+
+        let s = &r#"title:foo author:bob tag:rust \n"#;
+        let mut query = expression_into_query(qp, flags, s).expect("Failed to parse");
+        assert_eq!("Query((((((((WILDCARD SYNONYM Sfoo OR ZSfoo@1) OR (WILDCARD SYNONYM baz OR Zbaz@1)) OR (WILDCARD SYNONYM bar OR Zbar@1)) OR (WILDCARD SYNONYM Abob OR ZAbob@1)) OR (WILDCARD SYNONYM hee OR Zhee@1)) OR (WILDCARD SYNONYM Krust OR ZKrust@1)) OR (hee@1 PHRASE 3 hee@2 PHRASE 3 hee@3)))",
+        query.get_description(),
+        "Generated query didn't match expected for input string '{}'", s);
+    }
+
+    #[test]
+    fn example3() {
+        let mut qp = QueryParser::new().expect("Failed to create queryparser");
+        let mut stem = Stem::new("en").expect("Failed to create stemmer");
+        qp.set_stemmer(&mut stem).expect("Failed to set stemmer");
+
+        let flags = FlagBoolean as i16
+            | FlagPhrase as i16
+            | FlagLovehate as i16
+            | FlagBooleanAnyCase as i16
+            | FlagWildcard as i16
+            | FlagPureNot as i16
+            | FlagPartial as i16
+            | FlagSpellingCorrection as i16;
+
+        let s = &r#"title:foo "baz bar" author:"bob alice" hee tag:rust "hee hee"\n"#;
+        let mut query = expression_into_query(qp, flags, s).expect("Failed to parse");
+        assert_eq!("Query((((((((WILDCARD SYNONYM Sfoo OR ZSfoo@1) OR (WILDCARD SYNONYM baz OR Zbaz@1)) OR (WILDCARD SYNONYM bar OR Zbar@1)) OR (WILDCARD SYNONYM Abob OR ZAbob@1)) OR (WILDCARD SYNONYM hee OR Zhee@1)) OR (WILDCARD SYNONYM Krust OR ZKrust@1)) OR (hee@1 PHRASE 3 hee@2 PHRASE 3 hee@3)))",
+        query.get_description(),
+        "Generated query didn't match expected for input string '{}'", s);
     }
 }
 
