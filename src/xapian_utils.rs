@@ -396,6 +396,7 @@ impl fmt::Display for XapianTag {
 }
 
 mod xapiantag_tests {
+    #[allow(unused_imports)]
     use super::*;
     #[test]
     fn unrecognized_tag() {
