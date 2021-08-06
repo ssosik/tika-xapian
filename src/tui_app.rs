@@ -179,9 +179,8 @@ pub fn interactive_query() -> Result<Vec<String>, Report> {
             // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
             f.set_cursor(
                 // Put cursor past the end of the input text
-                panes[1].x + app.input.width() as u16 + 1,
-                // Move one line down, from the border to the input line
-                panes[1].y + 1,
+                panes[1].x + app.input.width() as u16,
+                panes[1].y,
             );
 
             // Area to display the parsed Xapian::Query.get_description()
@@ -213,17 +212,17 @@ pub fn interactive_query() -> Result<Vec<String>, Report> {
                 Key::Backspace => {
                     app.input.pop();
                 }
-                Key::Down => {
+                Key::Down | Key::Ctrl('n') => {
                     app.next();
                 }
-                Key::Up => {
+                Key::Up | Key::Ctrl('p') => {
                     app.previous();
                 }
                 _ => {}
             }
 
-            // Add a trailing ` ;` to the query to hint to Nom that it has a "full" string
             let mut inp: String = app.input.to_owned();
+            // Add a trailing ` ;` to the query to hint to Nom that it has a "full" string
             inp.push_str(&" ;");
 
             match xapian_utils::parse_user_query(&inp) {
