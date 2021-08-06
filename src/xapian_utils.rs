@@ -575,9 +575,9 @@ mod expression_tests {
             | FlagPartial as i16
             | FlagSpellingCorrection as i16;
 
-        let s = &r#"title:foo author:bob tag:rust \n"#;
+        let s = &r#"title:"foo bar" author:bob tag:rust\n"#;
         let mut query = expression_into_query(qp, flags, s).expect("Failed to parse");
-        assert_eq!("Query((((((((WILDCARD SYNONYM Sfoo OR ZSfoo@1) OR (WILDCARD SYNONYM baz OR Zbaz@1)) OR (WILDCARD SYNONYM bar OR Zbar@1)) OR (WILDCARD SYNONYM Abob OR ZAbob@1)) OR (WILDCARD SYNONYM hee OR Zhee@1)) OR (WILDCARD SYNONYM Krust OR ZKrust@1)) OR (hee@1 PHRASE 3 hee@2 PHRASE 3 hee@3)))",
+        assert_eq!("Query((((Sfoo@1 PHRASE 2 Sbar@2) OR (WILDCARD SYNONYM Abob OR ZAbob@1)) OR (tag@1 PHRASE 2 rust@2)))",
         query.get_description(),
         "Generated query didn't match expected for input string '{}'", s);
     }
@@ -599,7 +599,7 @@ mod expression_tests {
 
         let s = &r#"title:foo "baz bar" author:"bob alice" hee tag:rust "hee hee"\n"#;
         let mut query = expression_into_query(qp, flags, s).expect("Failed to parse");
-        assert_eq!("Query((((((((WILDCARD SYNONYM Sfoo OR ZSfoo@1) OR (WILDCARD SYNONYM baz OR Zbaz@1)) OR (WILDCARD SYNONYM bar OR Zbar@1)) OR (WILDCARD SYNONYM Abob OR ZAbob@1)) OR (WILDCARD SYNONYM hee OR Zhee@1)) OR (WILDCARD SYNONYM Krust OR ZKrust@1)) OR (hee@1 PHRASE 3 hee@2 PHRASE 3 hee@3)))",
+        assert_eq!("Query(((((((WILDCARD SYNONYM Sfoo OR ZSfoo@1) OR (baz@1 PHRASE 2 bar@2)) OR (Abob@1 PHRASE 2 Aalice@2)) OR (WILDCARD SYNONYM hee OR Zhee@1)) OR (WILDCARD SYNONYM Krust OR ZKrust@1)) OR (hee@1 PHRASE 2 hee@2)))",
         query.get_description(),
         "Generated query didn't match expected for input string '{}'", s);
     }
