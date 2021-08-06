@@ -299,7 +299,7 @@ mod quoted_tests {
 }
 
 fn tagged(input: Span) -> IResult<Span> {
-    recognize(separated_pair(word, tag(":"), alt((quoted, word))))(input)
+    recognize(tuple((word, tag(":"), alt((tagged, word)), multispace0)))(input)
 }
 
 #[cfg(test)]
@@ -312,13 +312,13 @@ mod tagged_tests {
 
     #[test]
     fn one_word_with_trailing_space() {
-        ExpectedParseResult::new(&"foo:bar", 0, 1, 1, &" ", 7, 1, 8)
-            .compare(&tagged, &r#"foo:bar "#)
+        ExpectedParseResult::new(&"foo:bar", 0, 1, 1, &"\\n", 7, 1, 8)
+            .compare(&tagged, &r#"foo:bar\n"#)
     }
 
     #[test]
     fn two_words() {
-        ExpectedParseResult::new(&"tag:foo", 0, 1, 1, &" bar", 7, 1, 8)
+        ExpectedParseResult::new(&"tag:foo ", 0, 1, 1, &"bar", 8, 1, 9)
             .compare(&tagged, &r#"tag:foo bar"#)
     }
 
@@ -330,7 +330,7 @@ mod tagged_tests {
 
     #[test]
     fn two_words_double_quoted() {
-        ExpectedParseResult::new(&"tag:\"foo bar\"", 0, 1, 1, &"", 13, 1, 14)
+        ExpectedParseResult::new(&"tag:\"foo bar\"\n", 0, 1, 1, &"", 13, 1, 14)
             .compare(&tagged, &r#"tag:"foo bar""#)
     }
 
@@ -495,38 +495,52 @@ fn whitespace(input: Span) -> IResult<Span> {
     recognize(many1(complete_multispace1))(input)
 }
 
-fn expression_into_query(
+fn expression_into_query<'a>(
     mut qp: QueryParser,
     flags: i16,
-    spans: Vec<Span>,
+    qstr: &'a str,
 ) -> Result<Query, Report> {
-    let mut spans = spans.into_iter();
-    let span = spans.next();
-    if span.is_none() {
+    //let (_rest, matches) = expression(Span::new(qstr))?;
+    let (_rest, matches) = expression(Span::new(qstr))?;
+    println!("Spans: {:?}", matches);
+
+    let mut matches = matches.into_iter();
+    let token = matches.next();
+    if token.is_none() {
         return Err(eyre!("Empty expression"));
     }
-    let span = span.unwrap();
-    match XapianTag::parse(span) {
-        Ok((rest, (tag, value))) => {
-            println!("TAG: {} {} {}", tag.to_xapian(), value, rest);
-        }
-        Err(e) => {
-            println!("Error: {} {}", e, span);
-        }
-    }
-    println!("Span: '{}'", span);
-    let mut query = qp.parse_query(*span, flags)?;
+    let token = token.unwrap();
 
-    for span in spans.into_iter() {
+    let mut query = match XapianTag::parse(token) {
+        Ok((_rest, (tag, value))) => {
+            //println!("TAG: {} {} {}", tag.to_xapian(), value, _rest);
+            qp.parse_query_with_prefix(&value, flags, tag.to_xapian())?
+        }
+        Err(_e) => {
+            //println!("Span: {} Error: {}", token, e);
+            qp.parse_query(*token, flags)?
+        }
+    };
+
+    for token in matches.into_iter() {
         // Skip whitespace-only tokens
-        if let Ok(_) = whitespace(span) {
+        if let Ok(_) = whitespace(token) {
             continue;
         }
-        if let Ok((rest, (tag, value))) = XapianTag::parse(span) {
-            println!("TAG: {} {} {}", tag.to_xapian(), value, rest);
-        }
-        println!("Span: '{}'", span);
-        query = query.add_right(XapianOp::OpOr, &mut qp.parse_query(*span, flags)?)?;
+
+        query = query.add_right(
+            XapianOp::OpOr,
+            &mut match XapianTag::parse(token) {
+                Ok((_rest, (tag, value))) => {
+                    //println!("TAG: {} {} {}", tag.to_xapian(), value, _rest);
+                    qp.parse_query_with_prefix(&value, flags, tag.to_xapian())?
+                }
+                Err(_e) => {
+                    //println!("Span: {} Error: {}", token, e);
+                    qp.parse_query(*token, flags)?
+                }
+            },
+        )?;
     }
 
     Ok(query)
@@ -550,17 +564,13 @@ mod expression_tests {
             | FlagPartial as i16
             | FlagSpellingCorrection as i16;
 
-        let (_rest, matches) = expression(Span::new(
-            //&r#"title:foo "baz bar" author:"bob alice" hee tag:rust "hee hee"\n"#,
-            &r#"title:foo baz bar author:"bob alice" hee tag:rust "hee hee"\n"#,
-        ))
-        .expect("Failed to parse");
-        println!("Expressions: {:?}", matches);
-        let mut query = expression_into_query(qp, flags, matches).expect("Failed to parse");
-        println!("Expressions: {:?}", query.get_description());
+        //let s = &r#"title:foo "baz bar" author:"bob alice" hee tag:rust "hee hee"\n"#;
+        let s = &r#"title:foo  baz bar author:bob hee tag:rust "hee hee hee" \n"#;
+        //let s = &r#"title:foo author:bob tag:rust \n"#;
 
-        let (_rest, matches) = expression(Span::new(&r#""#)).expect("Failed to parse");
-        println!("Expressions: {:?}", matches);
+        let mut query = expression_into_query(qp, flags, s).expect("Failed to parse");
+        println!("Original: {}", s);
+        println!("{:?}", query.get_description());
 
         assert!(false);
     }
