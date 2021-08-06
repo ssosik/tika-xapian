@@ -139,6 +139,7 @@ fn word(input: Span) -> IResult<Span> {
     recognize(many1(alt((recognize(alphanumeric1), recognize(tag("_"))))))(input)
 }
 
+#[allow(dead_code)]
 struct ExpectedParseResult<'a> {
     matched_fragment: &'a str,
     matched_offset: usize,
@@ -150,6 +151,7 @@ struct ExpectedParseResult<'a> {
     rest_column: usize,
 }
 
+#[allow(dead_code)]
 impl ExpectedParseResult<'_> {
     fn new<'a>(
         mf: &'a str,
@@ -424,69 +426,6 @@ mod xapiantag_tests {
     }
 }
 
-//fn operator(input: Span) -> IResult<Span> {
-//    recognize(alt((
-//        tag_no_case("AND NOT"),
-//        tag_no_case("AND"),
-//        tag_no_case("XOR"),
-//        tag_no_case("OR"),
-//        tag_no_case("AND MAYBE"),
-//        tag_no_case("FILTER"),
-//        tag_no_case("NEAR"),
-//        tag_no_case("PHRASE"),
-//        tag_no_case("RANGE"),
-//        tag_no_case("SCALED"),
-//        tag_no_case("ELITE"),
-//        tag_no_case(">"),
-//        tag_no_case("<"),
-//        tag_no_case("SYNONYM"),
-//    )))(input)
-//}
-
-//fn expression(input: Span) -> IResult<Span> {
-//    recognize(many1(alt((quoted, tagged, word, multispace1))))(input)
-//}
-//
-//#[cfg(test)]
-//mod expression_tests {
-//    use super::*;
-//    #[test]
-//    fn one_word_no_trailing_space() {
-//        assert!(expression(Span::new(r#"foo baz bar"#)).is_err())
-//    }
-//
-//    #[test]
-//    fn one_word_with_trailing_newline() {
-//        ExpectedParseResult::new(&"foo baz bar", 0, 1, 1, &"\\n", 11, 1, 12)
-//            .compare(&expression, &r#"foo baz bar\n"#)
-//    }
-//}
-
-//fn expression(input: &str) -> Vec<Query> {
-//    let ret = vec![];
-//    let res = many1(alt((operator, quoted, tagged, words)))(Span::new(input));
-//    if let Ok((rest, matched)) = res {
-//        for item in matched {
-//            println!("Match item: {}", *item);
-//        }
-//        println!("Rest: {}", *rest);
-//    }
-//    ret
-//}
-
-//fn take_until_operator(input: &str) -> IResult<Span> {
-//    recognize(alt((
-//        take_until("AND NOT"),
-//        take_until("and not"),
-//        take_until("AND"),
-//        take_until("and"),
-//        take_until("XOR"),
-//        take_until("xor"),
-//        take_until("OR"),
-//        take_until("OR"),
-//    )))(Span::new(input))
-//}
-
 fn expression(input: Span) -> IResult<Vec<Span>> {
     many1(alt((quoted, tagged, word, multispace1)))(input)
 }
@@ -508,13 +447,9 @@ fn span_into_query(qp: &mut QueryParser, flags: i16, token: Span) -> Result<Quer
     }
 }
 
-fn expression_into_query(
-    mut qp: QueryParser,
-    flags: i16,
-    qstr: &'static str,
-) -> Result<Query, Report> {
+fn expression_into_query(mut qp: QueryParser, flags: i16, qstr: &str) -> Result<Query, Report> {
     // Parse the query string into a Vec of matches
-    let (_rest, matches) = expression(Span::new(qstr))?;
+    let (_rest, matches) = expression(Span::new(qstr)).unwrap();
     let mut matches = matches.into_iter();
     let token = matches.next();
     if token.is_none() {
@@ -657,8 +592,7 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
         }
         Err(_) => {
             // No operator found in the initial string, return a query for the entire string
-            // TODO add support here for Tags
-            return Ok(qp.parse_query(qstr, flags)?);
+            return expression_into_query(qp, flags, qstr);
         }
     }
 
@@ -685,8 +619,10 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
                 qstr = str::from_utf8(rest)?;
             }
             Err(_) => {
-                // TODO add support here for Tags
-                query = query.add_right(operator.into(), &mut qp.parse_query(qstr, flags)?)?;
+                query = query.add_right(
+                    operator.into(),
+                    &mut expression_into_query(qp, flags, qstr)?,
+                )?;
 
                 // No more operators found, break out of the loop
                 break;
@@ -770,6 +706,68 @@ pub fn query_db(mut q: Query) -> Result<Vec<TikaDocument>, Report> {
     Ok(matches)
 }
 
+//fn operator(input: Span) -> IResult<Span> {
+//    recognize(alt((
+//        tag_no_case("AND NOT"),
+//        tag_no_case("AND"),
+//        tag_no_case("XOR"),
+//        tag_no_case("OR"),
+//        tag_no_case("AND MAYBE"),
+//        tag_no_case("FILTER"),
+//        tag_no_case("NEAR"),
+//        tag_no_case("PHRASE"),
+//        tag_no_case("RANGE"),
+//        tag_no_case("SCALED"),
+//        tag_no_case("ELITE"),
+//        tag_no_case(">"),
+//        tag_no_case("<"),
+//        tag_no_case("SYNONYM"),
+//    )))(input)
+//}
+
+//fn expression(input: Span) -> IResult<Span> {
+//    recognize(many1(alt((quoted, tagged, word, multispace1))))(input)
+//}
+//
+//#[cfg(test)]
+//mod expression_tests {
+//    use super::*;
+//    #[test]
+//    fn one_word_no_trailing_space() {
+//        assert!(expression(Span::new(r#"foo baz bar"#)).is_err())
+//    }
+//
+//    #[test]
+//    fn one_word_with_trailing_newline() {
+//        ExpectedParseResult::new(&"foo baz bar", 0, 1, 1, &"\\n", 11, 1, 12)
+//            .compare(&expression, &r#"foo baz bar\n"#)
+//    }
+//}
+
+//fn expression(input: &str) -> Vec<Query> {
+//    let ret = vec![];
+//    let res = many1(alt((operator, quoted, tagged, words)))(Span::new(input));
+//    if let Ok((rest, matched)) = res {
+//        for item in matched {
+//            println!("Match item: {}", *item);
+//        }
+//        println!("Rest: {}", *rest);
+//    }
+//    ret
+//}
+
+//fn take_until_operator(input: &str) -> IResult<Span> {
+//    recognize(alt((
+//        take_until("AND NOT"),
+//        take_until("and not"),
+//        take_until("AND"),
+//        take_until("and"),
+//        take_until("XOR"),
+//        take_until("xor"),
+//        take_until("OR"),
+//        take_until("OR"),
+//    )))(Span::new(input))
+//}
 //named!(
 //    match_xapiantag2,
 //    recognize!(alt!(
