@@ -9,7 +9,7 @@ use tui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
 };
 use xapian_rusty::{QueryParser, Stem};
 
@@ -32,6 +32,8 @@ use unicode_width::UnicodeWidthStr;
 pub(crate) struct TerminalApp {
     /// Current value of the input box
     pub(crate) input: String,
+    /// Preview window
+    pub(crate) output: String,
     /// Query Matches
     pub(crate) matches: Vec<TikaDocument>,
     /// Keep track of which matches are selected
@@ -51,6 +53,14 @@ impl TerminalApp {
             }
         };
         ret
+    }
+
+    pub fn get_selected_contents(&mut self) -> String {
+        if let Some(i) = self.state.selected() {
+            //return self.matches[i].body.clone();
+            return String::from("bibibib");
+        };
+        String::from("")
     }
 
     pub fn next(&mut self) {
@@ -86,6 +96,7 @@ impl Default for TerminalApp {
     fn default() -> TerminalApp {
         TerminalApp {
             input: String::new(),
+            output: String::new(),
             matches: Vec::new(),
             state: ListState::default(),
             errout: String::new(),
@@ -156,6 +167,12 @@ pub fn interactive_query() -> Result<Vec<String>, Report> {
                 .split(f.size());
             let selected_style = Style::default().add_modifier(Modifier::REVERSED);
 
+            let content = Layout::default()
+                .direction(Direction::Horizontal)
+                .margin(0)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+                .split(panes[0]);
+
             // Output area where match titles are displayed
             let matches: Vec<ListItem> = app
                 .matches
@@ -166,17 +183,25 @@ pub fn interactive_query() -> Result<Vec<String>, Report> {
                 })
                 .collect();
             let matches = List::new(matches)
+                .block(Block::default().borders(Borders::LEFT))
+                .highlight_style(selected_style)
+                .highlight_symbol("> ");
+            f.render_stateful_widget(matches, content[0], &mut app.state);
+
+            // Preview area where content is displayed
+            let paragraph = Paragraph::new(app.output.as_ref())
                 .block(Block::default().borders(Borders::ALL))
-                .highlight_style(selected_style);
-            //.highlight_symbol("> ");
-            f.render_stateful_widget(matches, panes[0], &mut app.state);
+                .wrap(Wrap { trim: true });
+            f.render_widget(paragraph, content[1]);
 
             // Input area where queries are entered
             let input = Paragraph::new(app.input.as_ref())
                 .style(Style::default().fg(Color::Yellow))
                 .block(Block::default().borders(Borders::NONE));
             f.render_widget(input, panes[1]);
-            // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
+
+            // Make the cursor visible and ask tui-rs to put it at the specified
+            // coordinates after rendering
             f.set_cursor(
                 // Put cursor past the end of the input text
                 panes[1].x + app.input.width() as u16,
@@ -214,9 +239,11 @@ pub fn interactive_query() -> Result<Vec<String>, Report> {
                 }
                 Key::Down | Key::Ctrl('n') => {
                     app.next();
+                    app.output = app.get_selected_contents();
                 }
                 Key::Up | Key::Ctrl('p') => {
                     app.previous();
+                    app.output = app.get_selected_contents();
                 }
                 _ => {}
             }
