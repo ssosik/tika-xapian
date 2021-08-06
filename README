@@ -43,9 +43,8 @@ DYLD_LIBRARY_PATH=xapian-core-1.4.17/.libs/ ./target/debug/xapian-rusty-test -i
 
 # TODO
 - TUI select many
-- TUI preview
 - searching/jumping-to/highlighting in preview
-- pageup/down; ctrl-n/p; ctrl-w
+- pageup/down; ctrl-w
 - TUI start list at the bottom instead of the top
 - timestamp ranges
 - Cache MD5 hashes of files using `kv` to skip indexing unchanged files
