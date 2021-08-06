@@ -108,20 +108,20 @@ impl fmt::Display for MatchOp {
 
 pub fn matchop(input: &str) -> IResult<MatchOp> {
     alt((
-        value(MatchOp::AndNot, tag_no_case("AND NOT")),
         value(MatchOp::AndMaybe, tag_no_case("AND MAYBE")),
+        value(MatchOp::Synonym, tag_no_case("SYNONYM")),
+        value(MatchOp::AndNot, tag_no_case("AND NOT")),
+        value(MatchOp::Filter, tag_no_case("FILTER")),
+        value(MatchOp::Phrase, tag_no_case("PHRASE")),
+        value(MatchOp::ScaleWeight, tag_no_case("SCALED")),
+        value(MatchOp::ValueRange, tag_no_case("RANGE")),
+        value(MatchOp::EliteSet, tag_no_case("ELITE")),
+        value(MatchOp::Near, tag_no_case("NEAR")),
         value(MatchOp::And, tag_no_case("AND")),
         value(MatchOp::Xor, tag_no_case("XOR")),
         value(MatchOp::Or, tag_no_case("OR")),
-        value(MatchOp::Filter, tag_no_case("FILTER")),
-        value(MatchOp::Near, tag_no_case("NEAR")),
-        value(MatchOp::Phrase, tag_no_case("PHRASE")),
-        value(MatchOp::ValueRange, tag_no_case("RANGE")),
-        value(MatchOp::ScaleWeight, tag_no_case("SCALED")),
-        value(MatchOp::EliteSet, tag_no_case("ELITE")),
         value(MatchOp::ValueGe, tag_no_case(">")),
         value(MatchOp::ValueLe, tag_no_case("<")),
-        value(MatchOp::Synonym, tag_no_case("SYNONYM")),
     ))(Span::new(input))
 }
 
@@ -714,8 +714,24 @@ pub fn parse_user_query(mut qstr: &str) -> Result<Query, Report> {
 named!(
     take_up_to_operator,
     alt!(
-        complete!(take_until!("AND NOT"))
+        complete!(take_until!("AND MAYBE"))
+            | complete!(take_until!("and maybe"))
+            | complete!(take_until!("AND NOT"))
             | complete!(take_until!("and not"))
+            | complete!(take_until!("SYNONYM"))
+            | complete!(take_until!("synonym"))
+            | complete!(take_until!("FILTER"))
+            | complete!(take_until!("filter"))
+            | complete!(take_until!("PHRASE"))
+            | complete!(take_until!("phrase"))
+            | complete!(take_until!("SCALED"))
+            | complete!(take_until!("scaled"))
+            | complete!(take_until!("ELITE"))
+            | complete!(take_until!("elite"))
+            | complete!(take_until!("RANGE"))
+            | complete!(take_until!("range"))
+            | complete!(take_until!("NEAR"))
+            | complete!(take_until!("near"))
             | complete!(take_until!("AND"))
             | complete!(take_until!("and"))
             | complete!(take_until!("XOR"))
