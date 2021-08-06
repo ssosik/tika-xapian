@@ -36,6 +36,10 @@ pub(crate) struct TerminalApp {
     pub(crate) matches: Vec<TikaDocument>,
     /// Keep track of which matches are selected
     pub(crate) state: ListState,
+    /// Report query parsing errors back to the user
+    pub(crate) errout: String,
+    /// Display the parsed query for debugging purposes
+    pub(crate) query: String,
 }
 
 impl TerminalApp {
@@ -84,6 +88,8 @@ impl Default for TerminalApp {
             input: String::new(),
             matches: Vec::new(),
             state: ListState::default(),
+            errout: String::new(),
+            query: String::new(),
         }
     }
 }
@@ -137,8 +143,16 @@ pub fn interactive_query() -> Result<Vec<String>, Report> {
         tui.draw(|f| {
             let panes = Layout::default()
                 .direction(Direction::Vertical)
-                .margin(1)
-                .constraints([Constraint::Min(1), Constraint::Length(3)].as_ref())
+                .margin(0)
+                .constraints(
+                    [
+                        Constraint::Min(1),
+                        Constraint::Length(2),
+                        Constraint::Length(2),
+                        Constraint::Length(2),
+                    ]
+                    .as_ref(),
+                )
                 .split(f.size());
             let selected_style = Style::default().add_modifier(Modifier::REVERSED);
 
@@ -160,7 +174,7 @@ pub fn interactive_query() -> Result<Vec<String>, Report> {
             // Input area where queries are entered
             let input = Paragraph::new(app.input.as_ref())
                 .style(Style::default().fg(Color::Yellow))
-                .block(Block::default().borders(Borders::ALL));
+                .block(Block::default().borders(Borders::NONE));
             f.render_widget(input, panes[1]);
             // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
             f.set_cursor(
@@ -168,7 +182,19 @@ pub fn interactive_query() -> Result<Vec<String>, Report> {
                 panes[1].x + app.input.width() as u16 + 1,
                 // Move one line down, from the border to the input line
                 panes[1].y + 1,
-            )
+            );
+
+            // Area to display the parsed Xapian::Query.get_description()
+            let query = Paragraph::new(app.query.as_ref())
+                .style(Style::default().fg(Color::Green))
+                .block(Block::default().borders(Borders::NONE));
+            f.render_widget(query, panes[2]);
+
+            // Area where errors are displayed, query parsing errors, etc
+            let errout = Paragraph::new(app.errout.as_ref())
+                .style(Style::default().fg(Color::Red))
+                .block(Block::default().borders(Borders::NONE));
+            f.render_widget(errout, panes[3]);
         })?;
 
         // Handle input
@@ -200,9 +226,15 @@ pub fn interactive_query() -> Result<Vec<String>, Report> {
             let borrowed_string: &str = "\n";
             owned_string.push_str(borrowed_string);
 
-            let query = xapian_utils::parse_user_query(&owned_string)?;
-            //app.matches = xapian_utils::query_db(db, query)?;
-            app.matches = xapian_utils::query_db(query)?;
+            match xapian_utils::parse_user_query(&owned_string) {
+                Ok(mut query) => {
+                    app.query = query.get_description();
+                    app.matches = xapian_utils::query_db(query)?;
+                }
+                Err(e) => {
+                    app.errout = e.to_string();
+                }
+            };
         }
     }
 
