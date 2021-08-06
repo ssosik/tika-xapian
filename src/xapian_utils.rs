@@ -450,8 +450,11 @@ fn span_into_query(qp: &mut QueryParser, flags: i16, token: Span) -> Result<Quer
 
 fn expression_into_query(mut qp: QueryParser, flags: i16, qstr: &str) -> Result<Query, Report> {
     // Parse the query string into a Vec of matches
-    let (_rest, matches) = expression(Span::new(qstr)).unwrap();
-    let mut matches = matches.into_iter();
+    let mut matches = match expression(Span::new(qstr)) {
+        Ok((_rest, matches)) => matches.into_iter(),
+        Err(_) => return Ok(qp.parse_query("", flags)?),
+    };
+
     let token = matches.next();
     if token.is_none() {
         return Err(eyre!("Empty expression"));
