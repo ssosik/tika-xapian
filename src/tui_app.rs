@@ -57,8 +57,7 @@ impl TerminalApp {
 
     pub fn get_selected_contents(&mut self) -> String {
         if let Some(i) = self.state.selected() {
-            //return self.matches[i].body.clone();
-            return String::from("bibibib");
+            return self.matches[i].body.clone();
         };
         String::from("")
     }

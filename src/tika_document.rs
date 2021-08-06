@@ -40,7 +40,7 @@ pub struct TikaDocument {
     pub subtitle: String,
 
     /// The Markdown-formatted body of the document
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub body: String,
 }
 
