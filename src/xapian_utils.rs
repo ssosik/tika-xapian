@@ -495,12 +495,11 @@ fn whitespace(input: Span) -> IResult<Span> {
     recognize(many1(complete_multispace1))(input)
 }
 
-fn expression_into_query<'a>(
+fn expression_into_query(
     mut qp: QueryParser,
     flags: i16,
-    qstr: &'a str,
+    qstr: &'static str,
 ) -> Result<Query, Report> {
-    //let (_rest, matches) = expression(Span::new(qstr))?;
     let (_rest, matches) = expression(Span::new(qstr))?;
     println!("Spans: {:?}", matches);
 
