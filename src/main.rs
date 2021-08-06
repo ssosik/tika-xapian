@@ -74,30 +74,6 @@ fn main() -> Result<(), Report> {
         let mut stemmer = Stem::new("en")?;
         tg.set_stemmer(&mut stemmer)?;
 
-        ////let (matches, errors): (Vec<_>, Vec<_>) = glob_files(
-        //glob_files(
-        //    &cli.value_of("config").unwrap(),
-        //    cli.value_of("source"),
-        //    cli.occurrences_of("v") as i8,
-        //)
-        //    .into_iter()
-        //.map(|entry| match entry {
-        //    Ok(path) => {
-        //            if let Ok(tikadoc) = parse_file(&path) {
-        //                update_index(&mut db, &mut tg, &tikadoc)?;
-        //                if cli.occurrences_of("v") > 0 {
-        //                    if let Ok(p) = tikadoc.full_path.into_string() {
-        //                        println!("✅ {}", p);
-        //                    }
-        //                }
-        //            } else {
-        //                eprintln!("❌ Failed to load file {}", path.display());
-        //            }
-        //    }
-        //    Err(e) => println!("{:?}", e),
-        //})
-        //.partition(Result::is_ok);
-
         // TODO is there a rustier way to do this?
         for entry in glob_files(
             &cli.value_of("config").unwrap(),
@@ -112,9 +88,6 @@ fn main() -> Result<(), Report> {
                     if let Ok(tikadoc) = parse_file(&path) {
                         update_index(&mut db, &mut tg, &tikadoc)?;
                         if cli.occurrences_of("v") > 0 {
-                            //if let Ok(p) = tikadoc.full_path.into_string() {
-                            //    println!("✅ {}", p);
-                            //}
                             println!("✅ {}", tikadoc.filename);
                         }
                     } else {
@@ -129,14 +102,6 @@ fn main() -> Result<(), Report> {
         db.commit()?;
     }
 
-    //let q = parse_user_query(r#"aaabcde c AND NOT vkms"#)?;
-    //let q = parse_user_query(r#"foobar AND NOT vkms"#)?;
-    //let q = parse_user_query(r#"foobar AND vkms"#)?;
-    //let q = parse_user_query(r#"openssl x509 and not vkms and not curl"#)?;
-    //let q = parse_user_query(r#""#)?;
-    //xapian_utils::query_db(q)?;
-
-    //let result = interactive_query();
     let mut iter = IntoIterator::into_iter(tui_app::interactive_query()?); // strings is moved here
     while let Some(s) = iter.next() {
         // next() moves a string out of the iter

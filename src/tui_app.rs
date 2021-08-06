@@ -11,22 +11,10 @@ use tui::{
     text::{Span, Spans},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
 };
-use xapian_rusty::{QueryParser, Stem};
 
 // Needed to provide `width()` method on String:
 // no method named `width` found for struct `std::string::String` in the current scope
 use unicode_width::UnicodeWidthStr;
-
-// TODO move terminal stuff into here
-//pub(crate) fn NewTerminal() -> Result<Terminal, Report> {
-//    // Terminal initialization
-//    let stdout = io::stdout().into_raw_mode()?;
-//    let stdout = MouseTerminal::from(stdout);
-//    let stdout = AlternateScreen::from(stdout);
-//    let backend = TermionBackend::new(stdout);
-//    let mut terminal = Terminal::new(backend)?;
-//    Ok(terminal)
-//}
 
 /// TerminalApp holds the state of the application
 pub(crate) struct TerminalApp {
@@ -123,20 +111,7 @@ pub fn setup_panic() {
 
 /// Interactive query interface
 pub fn interactive_query() -> Result<Vec<String>, Report> {
-    //let mut db = Database::new_with_path("mydb", DB_CREATE_OR_OVERWRITE)?;
-    let mut qp = QueryParser::new()?;
-    let mut stem = Stem::new("en")?;
-    qp.set_stemmer(&mut stem)?;
-
-    //let flags = FlagBoolean as i16
-    //    | FlagPhrase as i16
-    //    | FlagLovehate as i16
-    //    | FlagBooleanAnyCase as i16
-    //    | FlagWildcard as i16
-    //    | FlagPureNot as i16
-    //    | FlagPartial as i16
-    //    | FlagSpellingCorrection as i16;
-
+    // TODO create DB in main and pass it through to query_db
     let mut tui = tui::Terminal::new(TermionBackend::new(AlternateScreen::from(
         stdout().into_raw_mode().unwrap(),
     )))
