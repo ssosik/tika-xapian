@@ -125,6 +125,16 @@ pub fn matchop(input: &str) -> IResult<MatchOp> {
     ))(Span::new(input))
 }
 
+#[cfg(test)]
+mod matchop_tests {
+    use super::*;
+    #[test]
+    fn test1() {
+        //let (rest, op) = matchop("foo AND bar").expect("Failed to match Op");
+        let (rest, op) = matchop("AND\n").expect("Failed to match Op");
+    }
+}
+
 use nom_locate::LocatedSpan;
 
 pub type Span<'a> = LocatedSpan<&'a str>;

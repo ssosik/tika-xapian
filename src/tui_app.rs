@@ -196,7 +196,11 @@ pub fn interactive_query() -> Result<Vec<String>, Report> {
                 _ => {}
             }
 
-            let query = xapian_utils::parse_user_query(&app.input)?;
+            let mut owned_string: String = app.input.to_owned();
+            let borrowed_string: &str = "\n";
+            owned_string.push_str(borrowed_string);
+
+            let query = xapian_utils::parse_user_query(&owned_string)?;
             //app.matches = xapian_utils::query_db(db, query)?;
             app.matches = xapian_utils::query_db(query)?;
         }
